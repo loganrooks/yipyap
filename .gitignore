@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Audio working files & model weights (don't commit large binaries)
+*.wav
+*.mp3
+*.m4a
+*.flac
+*.ogg
+*.opus
+models/
+checkpoints/
+*.pth
+*.pt
+*.onnx
+
+# Allow small fixture audio under tests/fixtures/ via .gitattributes / git-lfs
+# (override later when fixtures are introduced)
+
+# Spike output
+spikes/output/
+spikes/*.local.*
+
+# Misc
+.env
+.env.local
+*.log
