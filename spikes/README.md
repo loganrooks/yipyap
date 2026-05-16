@@ -117,7 +117,20 @@ Real animalese banks are pitched up. If the default mapping pulls samples
 into muddy bass, add `--pitch-offset 12` (one octave up) — see the
 "Known knobs / non-failures" subsection of `docs/spike-plan.md`.
 
-`spikes/samples/` is gitignored — drop your `.wav` bank in there locally.
+`spikes/samples/` is gitignored — the upstream `animalese.wav` is from
+`acedio/animalese.js` and we don't redistribute it, only the slicer that
+regenerates the bank. To populate it on a fresh checkout:
+
+```
+python spikes/00_extract_bank.py
+```
+
+That downloads the source WAV, slices it into 26 letters, peak-normalizes
+each to 0.95 with short edge fades, and writes `{a..z}.wav` (PCM_16,
+0.15s, 44.1 kHz mono) into `spikes/samples/`. Pass `--out PATH` to extract
+elsewhere, `--source PATH` to use a pre-downloaded WAV (offline / firewalled
+hosts).
+
 Output filenames are driven by the bank:
 
 | Invocation                       | Direct output             | Mixed output                   |
