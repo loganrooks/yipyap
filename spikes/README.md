@@ -39,6 +39,29 @@ The first run of Spike A will pull Demucs model weights (a few hundred MB per
 model, cached under `~/.cache/torch/hub`). Same for pyannote on first ASR-mode
 run with `--diarize`.
 
+## Running on a remote GPU host
+
+`spikes/run-remote.sh` runs a spike script on a remote host over SSH and
+rsyncs `spikes/output/` back to the local checkout when it finishes.
+
+```sh
+# Run + sync:
+spikes/run-remote.sh 02_synthesis.py \
+  spikes/output/spike-a/mdx-UVR-MDX-NET-Inst_HQ_3/abu_dhabi_60-90/voice.wav \
+  spikes/output/spike-a/mdx-UVR-MDX-NET-Inst_HQ_3/abu_dhabi_60-90/background.wav \
+  --samples-dir spikes/samples/ --pitch-offset 6 \
+  --asr-input spikes/inputs/abu_dhabi_60-90.wav \
+  --asr-backend auto --diarize
+
+# Pull current remote outputs without running:
+spikes/run-remote.sh --sync-only
+```
+
+Defaults: `dionysus` SSH alias, `~/workspace/projects/yipyap` on the remote.
+Override with `YIPYAP_REMOTE_HOST=...` / `YIPYAP_REMOTE_PATH=...`. Assumes
+input files live at the same paths on the remote (the bootstrap scripts
+under `00_*.py` populate both hosts identically).
+
 ## Spike A — Source separation
 
 Question: can off-the-shelf separation cleanly split a sports clip into voice
