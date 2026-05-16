@@ -23,6 +23,7 @@ MANIFEST
 
 # Virtual environments
 .venv/
+.venv-spikes/
 venv/
 env/
 ENV/
@@ -62,9 +63,15 @@ checkpoints/
 # Allow small fixture audio under tests/fixtures/ via .gitattributes / git-lfs
 # (override later when fixtures are introduced)
 
-# Spike output
+# Spike output & local-only artefacts (see docs/spike-plan.md)
+spikes/inputs/
 spikes/output/
+spikes/samples/
+spikes/findings.md
 spikes/*.local.*
+
+# Per-user agent/tooling state (Claude Code, GSD framework, etc.)
+.claude/
 
 # Misc
 .env
