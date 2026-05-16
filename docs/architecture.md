@@ -147,9 +147,19 @@ Removed on success unless `--keep-temp` (Phase 3+).
 
 ## Decisions deferred until Phase 0 findings land
 
-- Which separation model (Demucs htdemucs_ft vs. mdx_extra vs. MDX-Net).
+- **Separation method (decided 2026-05-15, Spike A):** MDX-Net via
+  `audio-separator`, default model `UVR-MDX-NET-Inst_HQ_3.onnx`. Auto-runs on
+  ONNX Runtime's CoreML execution provider on Apple Silicon. Beat the Demucs
+  family and Open-Unmix on background preservation across three F1 clips
+  (clean engines, mid-race, podium-territory). Cross-family note in
+  `spikes/findings.md`: MDX-style *training* matters more than Demucs-vs-MDX-Net
+  *architecture* — Demucs's `mdx_extra` clustered with UVR's MDX-Net on
+  background fidelity, not with its sibling `htdemucs_ft`. The Phase 1
+  separator module will be `separator/mdx_backend.py` (replacing the
+  `demucs_backend.py` placeholder in the layout above) and will keep the
+  documented `separate(in_path, work_dir) -> SeparationResult` contract.
 - Whether `Analyzer` uses onset-detection only or transcription-based forced alignment.
 - Which pitch tracker (librosa.pyin / CREPE / RMVPE).
 - Animalese sample source (synthesized base + pitch-shift vs. pre-recorded sample bank).
 
-These are listed in `docs/spike-plan.md` and recorded back here once Phase 0 closes.
+These are listed in `docs/spike-plan.md` and recorded back here as Phase 0 closes.
