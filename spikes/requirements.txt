@@ -19,15 +19,23 @@ silero-vad>=5.0
 # audio-separator) is the new cross-family method (MDX-Net via UVR). It pulls
 # numpy>=2 transitively, so we drop the upper pin on numpy; librosa 0.11 and
 # demucs 4.0.1 both handle numpy 2.x.
-audio-separator[cpu]>=0.18
+#
+# Platform split: on macOS we want [cpu], which still uses ONNX Runtime's
+# CoreMLExecutionProvider on Apple Silicon. On Linux we default to [gpu]
+# (onnxruntime-gpu, CUDAExecutionProvider). The GPU build also has a CPU
+# EP fallback, so it works on Linux hosts without an NVIDIA GPU — just
+# bigger to install.
+audio-separator[cpu]>=0.18 ; sys_platform != "linux"
+audio-separator[gpu]>=0.18 ; sys_platform == "linux"
 # Open-Unmix is already installed transitively as a Demucs dep, but listing it
 # explicitly so the umx backend is a first-class spike method.
 openunmix>=1.2.1
-# ASR for the transcription-based Spike B fallback (spike-plan documents this
-# as the path to take if onset/cadence synthesis doesn't sound enough like
-# animalese). mlx-whisper runs natively on Apple Silicon's Metal GPU and is
-# the primary path; faster-whisper is a portable CPU fallback for Linux /
-# Intel Macs.
+# ASR for the transcription-based Spike B path. Two implementations,
+# auto-selected at runtime by spikes/02_synthesis.py select_asr_backend():
+#  - mlx-whisper: Apple Silicon native (Metal GPU via MLX), ~40-50x realtime.
+#  - faster-whisper: portable CTranslate2 build. CUDA when present (large-v3
+#    at ~5-10x realtime on a 1080Ti / 11 GB VRAM), CPU int8 fallback
+#    everywhere else. Required on Linux because mlx-whisper is Apple-only.
 mlx-whisper>=0.4 ; sys_platform == "darwin" and platform_machine == "arm64"
 faster-whisper>=1.0
 # Speaker diarization for the ASR-driven Spike B path. pyannote uses speaker

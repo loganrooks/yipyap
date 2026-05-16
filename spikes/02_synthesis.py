@@ -52,6 +52,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import platform
 import sys
 from collections import Counter
 from pathlib import Path
@@ -309,12 +310,76 @@ def pitch_shift_from_to(
     return np.interp(indices, np.arange(sample.size, dtype=np.float32), sample).astype(np.float32)
 
 
+def _transcribe_mlx_raw(
+    audio_path: Path, model_repo: str, initial_prompt: str | None
+) -> dict:
+    """Single mlx-whisper call. Returns the raw result dict."""
+    import mlx_whisper
+
+    return mlx_whisper.transcribe(
+        str(audio_path),
+        path_or_hf_repo=model_repo,
+        word_timestamps=True,
+        language="en",
+        condition_on_previous_text=False,
+        no_speech_threshold=0.3,
+        initial_prompt=initial_prompt,
+    )
+
+
+def _transcribe_faster_raw(
+    audio_path: Path, model_id: str, initial_prompt: str | None
+) -> dict:
+    """Single faster-whisper call. Adapts the segment/word iterator output
+    to the same dict shape as mlx-whisper so the downstream parser is
+    backend-agnostic.
+
+    CUDA is picked automatically when available; otherwise CPU with int8
+    quantization (CT2's standard low-RAM compute path).
+    """
+    import faster_whisper
+    import torch
+
+    if torch.cuda.is_available():
+        device, compute_type = "cuda", "float16"
+    else:
+        device, compute_type = "cpu", "int8"
+
+    model = faster_whisper.WhisperModel(
+        model_id, device=device, compute_type=compute_type
+    )
+    segments_iter, _info = model.transcribe(
+        str(audio_path),
+        word_timestamps=True,
+        language="en",
+        condition_on_previous_text=False,
+        no_speech_threshold=0.3,
+        initial_prompt=initial_prompt,
+    )
+
+    segments_out: list[dict] = []
+    for seg in segments_iter:
+        seg_words = []
+        for w in seg.words or []:
+            seg_words.append(
+                {"word": w.word, "start": float(w.start), "end": float(w.end)}
+            )
+        segments_out.append({
+            "text": seg.text,
+            "start": float(seg.start),
+            "end": float(seg.end),
+            "words": seg_words,
+        })
+    return {"segments": segments_out}
+
+
 def transcribe_full(
     audio_path: Path,
-    model_repo: str = "mlx-community/whisper-base.en-mlx",
+    model_id: str,
     initial_prompt: str | None = None,
+    backend: str = "mlx",
 ) -> tuple[list[dict], list[dict]]:
-    """Run mlx-whisper on ``audio_path``. Returns ``(words, segments)``.
+    """Transcribe ``audio_path``. Returns ``(words, segments)``.
 
     Each ``words`` entry is ``{text, letters, start, end, segment_idx}`` —
     ``text`` preserves the original casing/punctuation Whisper produced,
@@ -324,29 +389,25 @@ def transcribe_full(
 
     ``initial_prompt`` is treated as decoder context preceding the audio:
     Whisper shifts its prior toward tokens in the prompt. Use it to fix
-    chronic proper-noun mistakes (e.g. ``Piastri`` → ``P history``).
+    chronic proper-noun mistakes (e.g. ``Piastri`` -> ``P history``).
     None disables prompting.
 
-    mlx-whisper runs natively on Apple Silicon's Metal GPU via the MLX
-    framework; on an M-series chip, whisper-base.en runs at ~40-50x
-    realtime on a 30s clip.
+    ``backend`` dispatches to mlx-whisper (Apple Silicon, Metal GPU) or
+    faster-whisper (portable; CUDA when present, CPU int8 fallback).
+    Both return identical dict shapes so the parser below is shared.
 
     The caller should hand this the **original** clip (engines + commentary),
     NOT the MDX-separated voice stem: MDX's aggressive vocal-isolation
     silences too many sub-syllable transients for Whisper's internal VAD to
     cope with. Whisper handles broadcast noise natively.
     """
-    import mlx_whisper
-
-    def _run(prompt: str | None):
-        return mlx_whisper.transcribe(
-            str(audio_path),
-            path_or_hf_repo=model_repo,
-            word_timestamps=True,
-            language="en",
-            condition_on_previous_text=False,
-            no_speech_threshold=0.3,
-            initial_prompt=prompt,
+    def _run(prompt: str | None) -> dict:
+        if backend == "mlx":
+            return _transcribe_mlx_raw(audio_path, model_id, prompt)
+        if backend == "faster":
+            return _transcribe_faster_raw(audio_path, model_id, prompt)
+        raise ValueError(
+            f"Unknown ASR backend {backend!r}; expected 'mlx' or 'faster'."
         )
 
     def _renderable_words(res) -> int:
@@ -498,6 +559,92 @@ def pitch_over_range(
 # perceptually-natural band even for very-fast or very-slow words.
 LETTER_MIN_S = 0.045  # ~22 letters/sec ceiling
 LETTER_MAX_S = 0.150  # ~6.7 letters/sec floor
+
+# Backend selection registries. Logical sizes are translated to
+# backend-specific model identifiers at runtime; users can also pass a full
+# repo identifier (anything containing '/') as a literal pass-through.
+MLX_SIZE_TO_REPO = {
+    "tiny": "mlx-community/whisper-tiny.en-mlx",
+    "base": "mlx-community/whisper-base.en-mlx",
+    "small": "mlx-community/whisper-small.en-mlx",
+    "medium": "mlx-community/whisper-medium.en-mlx",
+    "large": "mlx-community/whisper-large-v3-mlx",
+    "turbo": "mlx-community/whisper-large-v3-turbo",
+}
+FASTER_SIZE_TO_REPO = {
+    "tiny": "tiny.en",
+    "base": "base.en",
+    "small": "small.en",
+    "medium": "medium.en",
+    "large": "large-v3",
+    "turbo": "large-v3-turbo",
+}
+
+# Per-backend defaults when the user doesn't pass --asr-model. Calibrated
+# for the typical host profile: small on Apple Silicon (base.en
+# undertranscribes proper nouns), turbo on Linux+CUDA with 8GB+ VRAM.
+DEFAULT_SIZE_BY_BACKEND = {"mlx": "small", "faster": "turbo"}
+
+
+def select_asr_backend() -> str:
+    """Detect best ASR backend for the current host.
+
+    'mlx' on Apple Silicon when mlx-whisper imports; 'faster' elsewhere
+    when faster-whisper imports. Raises if neither is installed.
+    """
+    is_apple_silicon = (
+        sys.platform == "darwin" and platform.machine() == "arm64"
+    )
+    if is_apple_silicon:
+        try:
+            import mlx_whisper  # noqa: F401
+
+            return "mlx"
+        except ImportError:
+            pass
+    try:
+        import faster_whisper  # noqa: F401
+
+        return "faster"
+    except ImportError as exc:
+        raise RuntimeError(
+            "No ASR backend available. Install mlx-whisper (Apple Silicon) "
+            "or faster-whisper (any platform). See spikes/requirements.txt."
+        ) from exc
+
+
+def resolve_asr_model(model_arg: str | None, backend: str) -> str:
+    """Translate a logical size to a backend-specific model id.
+
+    None -> backend default. A token containing '/' is treated as a full
+    repo identifier and passed through unchanged. A bare logical size
+    (tiny/base/small/medium/large/turbo) is looked up in the appropriate
+    registry. Anything else (e.g. ``large-v3``, ``small.en``) is also
+    passed through — faster-whisper accepts those directly.
+    """
+    if model_arg is None:
+        size = DEFAULT_SIZE_BY_BACKEND[backend]
+        return (MLX_SIZE_TO_REPO if backend == "mlx" else FASTER_SIZE_TO_REPO)[size]
+    if "/" in model_arg:
+        return model_arg
+    size = model_arg.lower()
+    registry = MLX_SIZE_TO_REPO if backend == "mlx" else FASTER_SIZE_TO_REPO
+    return registry.get(size, model_arg)
+
+
+def select_torch_device():
+    """Best torch device for pyannote / general inference.
+
+    Order: CUDA > MPS > CPU. Returns a ``torch.device``.
+    """
+    import torch
+
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
 
 # F1-broadcast vocabulary biasing for Whisper. Without this, base.en
 # routinely transcribes "Piastri" as "P history", "Verstappen" as
@@ -661,8 +808,9 @@ def diarize_speakers(
         "pyannote/speaker-diarization-3.1",
         token=hf_token,
     )
-    if torch.backends.mps.is_available():
-        pipeline.to(torch.device("mps"))
+    device = select_torch_device()
+    if device.type != "cpu":
+        pipeline.to(device)
 
     diarization = pipeline(
         str(audio_path),
@@ -732,6 +880,7 @@ def synthesize(
     min_speakers: int = 1,
     max_speakers: int = 4,
     asr_prompt: str | None = None,
+    asr_backend: str = "mlx",
 ) -> dict[str, Path]:
     """Render the spike output(s). Filenames depend on which mode was used.
 
@@ -779,6 +928,7 @@ def synthesize(
                 file=sys.stderr,
             )
         print(f"[spike-b] ASR input: {asr_input}")
+        print(f"[spike-b] ASR backend: {asr_backend}")
         print(f"[spike-b] ASR model: {asr_model}")
         if asr_prompt:
             print(
@@ -788,7 +938,7 @@ def synthesize(
         else:
             print("[spike-b] ASR initial prompt: (none)")
         words, transcript_segments = transcribe_full(
-            asr_input, asr_model, asr_prompt
+            asr_input, asr_model, asr_prompt, asr_backend
         )
         print(
             f"[spike-b] ASR: {len(words)} words, "
@@ -1093,12 +1243,27 @@ def main(argv: list[str]) -> int:
         ),
     )
     parser.add_argument(
+        "--asr-backend",
+        type=str,
+        default="auto",
+        choices=("auto", "mlx", "faster"),
+        help=(
+            "Which Whisper backend to use. 'auto' picks mlx-whisper on "
+            "Apple Silicon and faster-whisper everywhere else. Force "
+            "'faster' on Apple Silicon if you want to test the CT2 path."
+        ),
+    )
+    parser.add_argument(
         "--asr-model",
         type=str,
-        default="mlx-community/whisper-base.en-mlx",
+        default=None,
         help=(
-            "mlx-whisper model repo to use. Default: whisper-base.en-mlx "
-            "(fast, English-only, ~50x realtime on Apple Silicon)."
+            "Whisper model identifier. Accepts a logical size (tiny / "
+            "base / small / medium / large / turbo) that's translated to "
+            "the active backend's model id, OR a full repo identifier "
+            "(contains '/' for HuggingFace) passed through unchanged. "
+            "Default depends on backend: 'small' for mlx, 'turbo' for "
+            "faster-whisper (8 GB+ VRAM machines)."
         ),
     )
     parser.add_argument(
@@ -1228,6 +1393,14 @@ def main(argv: list[str]) -> int:
     else:
         asr_prompt = args.asr_prompt
 
+    # Resolve backend + model. Only matters in ASR mode, but harmless
+    # otherwise (synthesize ignores them unless --asr-input is set).
+    if args.asr_backend == "auto":
+        asr_backend = select_asr_backend()
+    else:
+        asr_backend = args.asr_backend
+    asr_model = resolve_asr_model(args.asr_model, asr_backend)
+
     try:
         outputs = synthesize(
             args.voice_stem,
@@ -1236,13 +1409,14 @@ def main(argv: list[str]) -> int:
             args.pitch_offset,
             args.rate_hz,
             args.asr_input,
-            args.asr_model,
+            asr_model,
             args.speakers,
             args.speaker_spread,
             args.diarize,
             args.min_speakers,
             args.max_speakers,
             asr_prompt,
+            asr_backend,
         )
     except FileNotFoundError as e:
         print(f"ERROR: {e}", file=sys.stderr)
