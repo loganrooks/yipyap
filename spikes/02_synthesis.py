@@ -808,13 +808,31 @@ def diarize_speakers(
     usually 2 (lap-by-lap + colour), occasionally 1 (solo lead) or 3-4
     (booth + driver radio + interview).
     """
+    import pyannote.audio
     from pyannote.audio import Pipeline
 
-    # pyannote.audio v4 renamed `use_auth_token` -> `token`.
-    pipeline = Pipeline.from_pretrained(
-        "pyannote/speaker-diarization-3.1",
-        token=hf_token,
-    )
+    # pyannote 3.x and 4.x have meaningfully different APIs and dep stacks:
+    #   - 3.x: kwarg `use_auth_token`, pipeline returns an `Annotation`
+    #     directly, uses `torchaudio` for IO (no torchcodec dep). Works
+    #     with torch>=2.0, so it's the only path on hosts stuck on
+    #     CUDA 12.4 / driver 550 (Pascal: GTX 10xx).
+    #   - 4.x: kwarg `token`, returns `DiarizeOutput` with both an
+    #     overlapping (`.speaker_diarization`) and an exclusive
+    #     (`.exclusive_speaker_diarization`) Annotation. Uses `torchcodec`
+    #     for IO. Requires torch>=2.8 (so cu126+ / driver 555+).
+    # The shim normalizes both code paths to a single `Annotation` for
+    # downstream word-to-speaker labeling.
+    pyannote_major = int(pyannote.audio.__version__.split(".", 1)[0])
+
+    if pyannote_major >= 4:
+        pipeline = Pipeline.from_pretrained(
+            "pyannote/speaker-diarization-3.1", token=hf_token
+        )
+    else:
+        pipeline = Pipeline.from_pretrained(
+            "pyannote/speaker-diarization-3.1", use_auth_token=hf_token
+        )
+
     device = select_torch_device()
     if device.type != "cpu":
         pipeline.to(device)
@@ -825,12 +843,14 @@ def diarize_speakers(
         max_speakers=max_speakers,
     )
 
-    # pyannote.audio v4 returns DiarizeOutput with `.speaker_diarization`
-    # (may contain overlapping turns) and `.exclusive_speaker_diarization`
-    # (single-speaker-per-frame, suitable for downstream transcription). We
-    # use the exclusive variant for word labeling — overlapping turns would
-    # ambiguate the word→speaker assignment.
-    annotation = diarization.exclusive_speaker_diarization
+    if pyannote_major >= 4:
+        # DiarizeOutput.exclusive_speaker_diarization has no overlapping
+        # turns, which is what we want for word labeling — overlapping
+        # turns would ambiguate the word->speaker assignment.
+        annotation = diarization.exclusive_speaker_diarization
+    else:
+        # pyannote 3.x: pipeline returns the Annotation directly.
+        annotation = diarization
 
     segments: list[tuple[float, float, int]] = []
     speaker_order: dict[str, int] = {}

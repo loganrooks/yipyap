@@ -41,9 +41,19 @@ faster-whisper>=1.0
 # Speaker diarization for the ASR-driven Spike B path. pyannote uses speaker
 # embeddings (timbre, not pitch), so a single excited commentator whose
 # pitch jumps an octave on a podium finish stays in one cluster. Requires
-# HF_TOKEN env var at runtime and acceptance of model conditions at
-# https://hf.co/pyannote/speaker-diarization-3.1.
-pyannote.audio>=4.0
+# a HuggingFace read token at runtime and acceptance of model conditions at
+# https://hf.co/pyannote/speaker-diarization-3.1 (and two referenced
+# sub-models: pyannote/segmentation-3.0, pyannote/speaker-diarization-
+# community-1, hf.co/pyannote/wespeaker-voxceleb-resnet34-LM).
+#
+# Pinned <4 because pyannote 4.x requires torch>=2.8.0, which only has
+# cu126/cu128 wheels (driver 555+). Pascal-class GPUs (e.g. GTX 1080 Ti
+# with driver 550) max out at cu124 / torch 2.6. pyannote 3.x uses
+# torchaudio for IO (no torchcodec dep) and runs cleanly on torch 2.6+.
+# The diarize_speakers() shim in 02_synthesis.py detects the installed
+# major version and adapts kwargs + return-type handling, so both 3.x
+# and 4.x are supported when installed manually.
+pyannote.audio>=3.3,<4.0
 # torch and torchaudio come transitively via demucs; pinning them here would
 # fight demucs's own constraint solver. Leave them implicit.
 #
