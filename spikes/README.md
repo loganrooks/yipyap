@@ -7,19 +7,33 @@ before Phase 1 starts. See `docs/spike-plan.md` for the rationale.
 
 ```
 spikes/
-  README.md                # this file — checklist + invocation
-  requirements.txt         # spike-only deps (NOT project deps)
-  01_separation.py         # Spike A — source separation
-  02_synthesis.py          # Spike B — onset-aligned animalese
-  inputs/                  # gitignored: drop source clips here
-  output/                  # gitignored: scripts write stems / synthesis here
-  findings.md              # gitignored: human listening verdicts go here
+  README.md                   # this file — checklist + invocation
+  requirements.txt            # spike-only deps (NOT project deps)
+  01_separation.py            # Spike A — source separation
+  02_synthesis.py             # Spike B — onset-aligned animalese
+  02-synthesis-log.md         # Spike B static-mitigation lab notebook
+  02-synthesis-findings.md    # Spike B qualitative reflections
+  inputs/                     # gitignored: drop source clips here
+  output/                     # gitignored: scripts write stems / synthesis here
+  findings.md                 # gitignored: human listening verdicts go here
 ```
 
-Only the README, `requirements.txt`, the four Python scripts (`00_download_clips.py`,
-`00_extract_bank.py`, `01_separation.py`, `02_synthesis.py`) are committed.
-Everything under `inputs/`, `output/`, `samples/`, plus `findings.md` and
-`.venv-spikes/` are local-only.
+Each spike venture gets two committed companion docs:
+
+- `<NN>-<topic>-log.md` — lab notebook. Per-attempt data, measurements,
+  listen verdict. Append-only.
+- `<NN>-<topic>-findings.md` — qualitative reflections on the spike as
+  a whole. Edited as understanding deepens.
+
+Durable cross-venture takeaways (the stuff that should outlive Phase 0)
+get distilled into `../docs/lessons.md` so they survive `spikes/` being
+deleted.
+
+Only the README, `requirements.txt`, the four Python scripts
+(`00_download_clips.py`, `00_extract_bank.py`, `01_separation.py`,
+`02_synthesis.py`), and the per-spike companion docs are committed.
+Everything under `inputs/`, `output/`, `samples/`, plus `findings.md`
+and `.venv-spikes/` are local-only.
 
 ## Setup (one-time)
 

@@ -83,6 +83,31 @@ def slice_letters(source_wav: Path, out_dir: Path) -> list[Path]:
     return out_paths
 
 
+def _print_bank_stats(out_paths: list[Path]) -> None:
+    """Markdown table of per-letter peak/RMS/HF/DC stats.
+
+    Copy-pasteable into ``spikes/02-synthesis-log.md`` so the baseline
+    table regenerates whenever the bank does.
+    """
+    print()
+    print("[extract-bank] per-letter stats:")
+    print()
+    print("| letter | peak  | RMS   | HF>5kHz | DC offset |")
+    print("|--------|------:|------:|--------:|----------:|")
+    for p in out_paths:
+        audio, sr = sf.read(str(p), dtype="float32")
+        spec = np.abs(np.fft.rfft(audio))
+        freqs = np.fft.rfftfreq(audio.size, 1 / sr)
+        hf = float(spec[freqs > 5000].sum() / (spec.sum() + 1e-12))
+        peak = float(np.max(np.abs(audio)))
+        rms = float(np.sqrt(np.mean(audio**2)))
+        dc = float(np.mean(audio))
+        print(
+            f"| {p.stem:<6} | {peak:.3f} | {rms:.3f} "
+            f"| {hf:.3f}   | {dc:+.4f}   |"
+        )
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(
         description="Extract animalese A-Z letter bank into a directory."
@@ -120,7 +145,8 @@ def main(argv: list[str]) -> int:
         download_source(source)
         downloaded = True
 
-    slice_letters(source, args.out)
+    out_paths = slice_letters(source, args.out)
+    _print_bank_stats(out_paths)
 
     if downloaded and not args.keep_source:
         source.unlink(missing_ok=True)
