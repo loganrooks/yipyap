@@ -16,8 +16,9 @@ spikes/
   findings.md              # gitignored: human listening verdicts go here
 ```
 
-Only `README.md`, `requirements.txt`, `01_separation.py`, and `02_synthesis.py`
-are committed. Everything under `inputs/`, `output/`, plus `findings.md` and
+Only the README, `requirements.txt`, the four Python scripts (`00_download_clips.py`,
+`00_extract_bank.py`, `01_separation.py`, `02_synthesis.py`) are committed.
+Everything under `inputs/`, `output/`, `samples/`, plus `findings.md` and
 `.venv-spikes/` are local-only.
 
 ## Setup (one-time)
@@ -27,10 +28,16 @@ python3.11 -m venv .venv-spikes
 source .venv-spikes/bin/activate
 pip install --upgrade pip
 pip install -r spikes/requirements.txt
+
+# Populate the gitignored runtime data:
+python spikes/00_download_clips.py     # F1 clips into spikes/inputs/  (needs yt-dlp + ffmpeg on PATH)
+python spikes/00_extract_bank.py       # animalese letter bank into spikes/samples/
+huggingface-cli login                  # paste a HF read token (needed for pyannote diarization)
 ```
 
 The first run of Spike A will pull Demucs model weights (a few hundred MB per
-model, cached under `~/.cache/torch/hub`).
+model, cached under `~/.cache/torch/hub`). Same for pyannote on first ASR-mode
+run with `--diarize`.
 
 ## Spike A — Source separation
 
