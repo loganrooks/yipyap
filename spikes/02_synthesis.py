@@ -811,6 +811,22 @@ def diarize_speakers(
     import pyannote.audio
     from pyannote.audio import Pipeline
 
+    # torch 2.6+ flipped torch.load's `weights_only` default from False to
+    # True. pyannote 3.x checkpoints (.bin pickle, fetched from
+    # authenticated HF Hub) embed multiple internal pyannote / torch
+    # classes that aren't on the default safe-globals allowlist —
+    # whack-a-mole'ing them one by one isn't tractable. Trusted source
+    # (HF auth gate), so we patch torch.load to default weights_only=False
+    # during the pipeline load and restore immediately. No-op on pyannote
+    # 4.x which uses safetensors and never hits this code path.
+    _orig_torch_load = torch.load
+
+    def _trusted_load(*args, **kwargs):
+        # Force-override — lightning_fabric.utilities.cloud_io._load passes
+        # weights_only=True explicitly, so setdefault wouldn't help.
+        kwargs["weights_only"] = False
+        return _orig_torch_load(*args, **kwargs)
+
     # pyannote 3.x and 4.x have meaningfully different APIs and dep stacks:
     #   - 3.x: kwarg `use_auth_token`, pipeline returns an `Annotation`
     #     directly, uses `torchaudio` for IO (no torchcodec dep). Works
@@ -828,29 +844,39 @@ def diarize_speakers(
         pipeline = Pipeline.from_pretrained(
             "pyannote/speaker-diarization-3.1", token=hf_token
         )
-    else:
-        pipeline = Pipeline.from_pretrained(
-            "pyannote/speaker-diarization-3.1", use_auth_token=hf_token
+        device = select_torch_device()
+        if device.type != "cpu":
+            pipeline.to(device)
+        diarization = pipeline(
+            str(audio_path),
+            min_speakers=min_speakers,
+            max_speakers=max_speakers,
         )
-
-    device = select_torch_device()
-    if device.type != "cpu":
-        pipeline.to(device)
-
-    diarization = pipeline(
-        str(audio_path),
-        min_speakers=min_speakers,
-        max_speakers=max_speakers,
-    )
-
-    if pyannote_major >= 4:
         # DiarizeOutput.exclusive_speaker_diarization has no overlapping
         # turns, which is what we want for word labeling — overlapping
         # turns would ambiguate the word->speaker assignment.
         annotation = diarization.exclusive_speaker_diarization
     else:
-        # pyannote 3.x: pipeline returns the Annotation directly.
-        annotation = diarization
+        # pyannote 3.x lazy-loads its sub-models (segmentation, embedding)
+        # during both Pipeline.from_pretrained AND the first pipeline(...)
+        # call. Keep the torch.load patch active across both.
+        torch.load = _trusted_load
+        try:
+            pipeline = Pipeline.from_pretrained(
+                "pyannote/speaker-diarization-3.1", use_auth_token=hf_token
+            )
+            device = select_torch_device()
+            if device.type != "cpu":
+                pipeline.to(device)
+            diarization = pipeline(
+                str(audio_path),
+                min_speakers=min_speakers,
+                max_speakers=max_speakers,
+            )
+            # pyannote 3.x: pipeline returns the Annotation directly.
+            annotation = diarization
+        finally:
+            torch.load = _orig_torch_load
 
     segments: list[tuple[float, float, int]] = []
     speaker_order: dict[str, int] = {}

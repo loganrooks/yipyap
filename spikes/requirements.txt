@@ -54,6 +54,11 @@ faster-whisper>=1.0
 # major version and adapts kwargs + return-type handling, so both 3.x
 # and 4.x are supported when installed manually.
 pyannote.audio>=3.3,<4.0
+# pyannote 3.x calls hf_hub_download(use_auth_token=...) internally,
+# which huggingface_hub removed in 1.0. Pin <1.0 so the kwarg still
+# exists. (No-op for pyannote 4.x users, which uses the new `token`
+# kwarg and works with either hf_hub major.)
+huggingface-hub<1.0
 # torch and torchaudio come transitively via demucs; pinning them here would
 # fight demucs's own constraint solver. Leave them implicit.
 #
