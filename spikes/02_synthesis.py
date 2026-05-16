@@ -334,14 +334,21 @@ def _transcribe_faster_raw(
     to the same dict shape as mlx-whisper so the downstream parser is
     backend-agnostic.
 
-    CUDA is picked automatically when available; otherwise CPU with int8
-    quantization (CT2's standard low-RAM compute path).
+    Device + compute_type are picked by GPU capability:
+      - CUDA + Volta or later (compute 7.0+, has tensor cores): float16.
+      - CUDA + Pascal or earlier (compute < 7.0, e.g. GTX 1080 Ti): CT2
+        rejects float16 because Pascal lacks efficient FP16 compute units;
+        int8_float32 (int8 weights, fp32 math) is the sane fallback —
+        roughly 2-3× faster than float32 with negligible quality loss.
+      - CPU: int8 (CT2's standard low-RAM compute path).
     """
     import faster_whisper
     import torch
 
     if torch.cuda.is_available():
-        device, compute_type = "cuda", "float16"
+        device = "cuda"
+        major, _minor = torch.cuda.get_device_capability(0)
+        compute_type = "float16" if major >= 7 else "int8_float32"
     else:
         device, compute_type = "cpu", "int8"
 
