@@ -64,6 +64,59 @@ Listen verdict (0.75×): TODO.
 
 ## Attempts
 
+### 0002 — V1: josh-f1 single-voice end-to-end on Abu Dhabi (plan v2 V1)
+
+- **Date:** 2026-05-16
+- **Status:** rendered (awaiting listen verdict)
+- **Branch / commit:** `phase-0/static-log-scaffold`, on top of
+  `15aef27` (the pivot commit). No code change — V1 is bank-only.
+- **Hypothesis (v2 plan):** Replacing the bank substrate from acedio
+  PCM_U8 (~48 dB SNR) to joshxviii-f1 (16-bit, independently recorded,
+  median f0 397.7 Hz across the 26 letters) is sufficient to move
+  Surface B static rating from "distractingly hash-y" toward "no
+  audible static" without touching pipeline code. Predicted from the
+  Surface A listen on samples-josh-f1 (the "beyond the best" judgement).
+- **Renders:**
+
+  | File                                                  | Variant                          |
+  |-------------------------------------------------------|----------------------------------|
+  | `spike-b-josh-f1-asr.wav` (940K, direct)              | josh-f1, ASR, `--pitch-offset 6` |
+  | `spike-b-josh-f1-asr-mixed.wav` (940K, with bg)       | josh-f1, ASR, `--pitch-offset 6` |
+  | `spike-b-josh-f1-asr-p0.wav` (940K, direct)           | josh-f1, ASR, `--pitch-offset 0` |
+  | `spike-b-josh-f1-asr-p0-mixed.wav` (940K, with bg)    | josh-f1, ASR, `--pitch-offset 0` |
+
+- **Renderer telemetry:** 76 ASR words, 3 segments, 75 rendered (320
+  letters), 4 pitch fallbacks. Bank median base 397.7 Hz, 0 outliers
+  corrected. Backend: faster-whisper large-v3-turbo.
+- **Measurements (objective):**
+
+  | Metric                       | Pre (v1 baseline, acedio) | Post (josh-f1, +6)  | Post (josh-f1, +0)  |
+  |------------------------------|---------------------------|---------------------|---------------------|
+  | Output peak (direct)         | TBD (need re-measure)     | TBD                 | TBD                 |
+  | RTF                          | TBD                       | TBD                 | TBD                 |
+  | Determinism                  | yes                       | yes (same code)     | yes (same code)     |
+  | Bank median base             | ~270 Hz (acedio)          | 397.7 Hz            | 397.7 Hz            |
+  | Effective render f0 (median) | ~270 × 2^(6/12) = 381 Hz  | ~397.7 × 2^(6/12) = 562 Hz | 397.7 Hz     |
+
+  Peak / RTF measurements deliberately deferred: the v1 baseline didn't
+  capture them either (TBD in `## Per-letter baseline`), so retroactive
+  capture on both renders is a small follow-up, not a gate on the listen.
+- **Qual predictions (v2 plan, restated for the listen):**
+  - static gain (B, ASR): **+2 to +3 points** vs acedio baseline at +6
+  - character (f, s, t, x identifiability): unchanged or +1
+  - cadence: unchanged (no timing code touched)
+  - naturalness: +1 to +2 at +6; possibly higher at +0 if +6 over-shifts
+    josh-f1's already-high f0 into "anime-girl squeak" territory
+  - p0 vs p6 spot-check: predicted p0 sounds *more natural* (less
+    formant warp), p6 sounds *more animalese-like* (higher pitch matches
+    AC convention). The decision is stylistic.
+- **Listen verdict (Surface B, 1.0× / 0.75×):** TODO. User listens
+  to all four files; scores go here. Mandatory dimensions: static,
+  cadence, naturalness (per v2's Surface B rubric).
+- **Stop condition (from v2):** If static rating gain < +1, the pivot
+  was wrong and V2/V3/V4 don't proceed. If ≥ +2 and naturalness ≥ +1,
+  V2 (multi-voice) is unblocked.
+
 ### 0001 — DC-remove per letter at extract-time (plan E1a)
 
 - **Date:** 2026-05-16
