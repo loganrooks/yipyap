@@ -239,10 +239,12 @@ and re-examine — the pivot was wrong.
 
 **Where:** New mapping layer between diarization output and
 `render_word`. Roughly: `cluster_speakers_by_pitch` already orders
-speakers by mean f0; map ordinal k → voice in a curated pool
-(`["josh-m4", "josh-m2", "josh-m3", "josh-f1"]` as a candidate pool;
-m4 lowest = commentators, f1 highest = whoever is highest-pitched in
-clip). Per-speaker override via CLI flag or sidecar JSON.
+speakers by mean f0; map ordinal k → voice in a curated pool ordered
+by measured f0 from `josh_stats_full.txt`: m4 (100 Hz) → m3 (309 Hz)
+→ m2 (351 Hz) → f1 (396 Hz). So the default candidate pool is
+`["josh-m4", "josh-m3", "josh-m2", "josh-f1"]` (ascending pitch —
+ordinal 0 is the lowest speaker's bank). Per-speaker override via
+CLI flag or sidecar JSON.
 
 **Hypothesis:** Two distinct commentators rendered in two distinct
 josh voices is audibly preferable to both in the same voice. Mapping
@@ -296,10 +298,10 @@ post-`pitch_shift_from_to`, pre-placement). Per-letter random uniform
 jitter in semitones, drawn fresh per letter, unseeded.
 
 **Hypothesis:** Josh's jitter (a `uniform(-J, +J)` semitones per letter,
-J ≈ 0.5 in his default voice profile) is what makes his synthesis sound
-"alive" vs the metronome quality of fixed-pitch acedio output. The
-audible effect on Surface B is more important than the algorithmic
-change.
+J ≈ 0.2 by default per `02-synthesis-research-josh.md` §1 audit of
+`audio-manager.cjs`) is what makes his synthesis sound "alive" vs the
+metronome quality of fixed-pitch acedio output. The audible effect
+on Surface B is more important than the algorithmic change.
 
 **Surfaces:** B (primary).
 
@@ -317,14 +319,17 @@ change.
 
 - Naturalness improves. Static doesn't (jitter doesn't touch the bank
   floor). Cadence doesn't (jitter is intra-letter pitch, not timing).
-- Predicted J range: 0.3–0.8 semitones. Below 0.3, inaudible. Above
-  0.8, the synthesised speech starts sounding "tipsy."
+- Predicted J range to test: 0.1–0.5 semitones, with josh's reference
+  point at 0.2. Below 0.1, likely inaudible. Above ~0.5, synthesised
+  speech tilts toward "tipsy."
 - Determinism loss is real and intentional. If we want repro for
   testing, a seedable mode behind a flag, but default unseeded so the
   output sounds live.
 
 **Production cost:** ~5 LOC. New deps: none. New CLI flag:
-`--pitch-jitter SEMITONES` (default 0.5).
+`--pitch-jitter SEMITONES` (default 0.2, matching josh's reference
+value; any later move away from 0.2 should be documented as an
+intentional yipyap retune, not silent drift).
 
 **Risk:** Determinism loss breaks any golden-output test we might
 write later. Pre-empt: golden test (when it lands in Phase 1) must

@@ -175,7 +175,11 @@ yipyap is acedio's CC BY 4.0 bank or a freshly-recorded original.
 
 ## 5. Audio cleanup tricks others apply
 
-Reading the actual code of every implementation above:
+Reading the actual code of every implementation cited in sections 1–4
+above (acedio, jakubpetrik/animalese-swift, 27Aditi/animalese-python,
+graysonpike/animalese-py, brsgr/animalese-rs, equalo's, DigiDuncan's,
+and joshxviii's repos — each cloned and read at the commits referenced
+by their respective sections of this doc, 2026-05-16):
 
 - **Per-letter edge fades:** universal. `equalo` does it implicitly via
   pydub; `graysonpike` via miniaudio; `27Aditi` does explicit

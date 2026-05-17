@@ -98,18 +98,18 @@ def extract_voice(ogg_path: Path, out_dir: Path) -> dict:
 def summarize(stats: dict) -> str:
     """One-line health summary per voice."""
     letters = stats["letters"]
-    peaks = [l["peak"] for l in letters]
-    rmss = [l["rms"] for l in letters]
-    hfs = [l["hf5k"] for l in letters]
-    raw_peaks = [l["peak_raw_pre_norm"] for l in letters]
+    peaks = [letter["peak"] for letter in letters]
+    rmss = [letter["rms"] for letter in letters]
+    hfs = [letter["hf5k"] for letter in letters]
+    raw_peaks = [letter["peak_raw_pre_norm"] for letter in letters]
     anom = []
-    for l in letters:
-        if l["peak"] > 0.99:
-            anom.append(f"clip:{l['letter']}({l['peak']:.3f})")
-        if l["peak_raw_pre_norm"] < 0.05:
-            anom.append(f"silent:{l['letter']}({l['peak_raw_pre_norm']:.3f})")
-        if abs(l["dc"]) > 0.01:
-            anom.append(f"dc:{l['letter']}({l['dc']:+.3f})")
+    for letter in letters:
+        if letter["peak"] > 0.99:
+            anom.append(f"clip:{letter['letter']}({letter['peak']:.3f})")
+        if letter["peak_raw_pre_norm"] < 0.05:
+            anom.append(f"silent:{letter['letter']}({letter['peak_raw_pre_norm']:.3f})")
+        if abs(letter["dc"]) > 0.01:
+            anom.append(f"dc:{letter['letter']}({letter['dc']:+.3f})")
     return (
         f"  letters={len(letters)} peak_mean={np.mean(peaks):.3f} "
         f"rms_mean={np.mean(rmss):.3f} hf_mean={np.mean(hfs):.3f} "

@@ -73,6 +73,13 @@ class SeparationResult:
 
 ### `VoiceEvent`
 
+> ⚠ **Phase 0 update (2026-05-17): superseded.** `VoiceEvent` is the
+> onset-driven contract the original plan called for. Phase 0 settled
+> on ASR-driven analysis instead — the actual Phase 1 contract is
+> `WordEvent`, defined in "Contract changes implied by Phase 0
+> findings" below. Documented here as historical record; do not
+> implement this exact shape in `src/yipyap/`.
+
 One per detected syllable/onset in the voice stem.
 
 ```python

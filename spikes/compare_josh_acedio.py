@@ -63,8 +63,10 @@ xcorrs = []
 for letter in "abcdefghijklmnopqrstuvwxyz":
     ja, jsr = sf.read(str(ROOT / "samples-josh-f1" / f"{letter}.wav"))
     aa, asr = sf.read(str(ROOT / "samples-baseline" / f"{letter}.wav"))
-    if ja.ndim > 1: ja = ja.mean(axis=1)
-    if aa.ndim > 1: aa = aa.mean(axis=1)
+    if ja.ndim > 1:
+        ja = ja.mean(axis=1)
+    if aa.ndim > 1:
+        aa = aa.mean(axis=1)
     jr = librosa.resample(ja.astype(np.float32), orig_sr=jsr, target_sr=asr) if jsr != asr else ja
     cc = cross_correlate(jr.astype(np.float32), aa.astype(np.float32))
     xcorrs.append(cc)

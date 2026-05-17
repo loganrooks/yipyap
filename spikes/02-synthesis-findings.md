@@ -110,12 +110,17 @@ re-processed. `compare_josh_acedio.py` cross-correlated josh-f1's 26
 letters against acedio's corresponding letters: mean xcorr 0.045, max
 0.18 — same-recording correlation would land > 0.7. **josh-f1 is
 definitively not acedio-derived.** This narrower claim is what the
-script measures; the other seven josh voices (f2-f4, m1-m4) were
-inspected via cross-correlation *among themselves* in
-`stats_josh.py` (28 pairs, all < 0.5 — mutually distinct), but their
-independence from acedio specifically has not been measured here, and
-the architecture decision to default to josh-f1 (not the multi-voice
-pool) is the one this provenance check supports.
+script measures; the other seven josh voices (f2-f4, m1-m4) are
+visibly distinct from each other and from f1 in the per-voice stats
+(`josh_stats_full.txt` shows ~285 Hz f0 spread across the 8 voices),
+but pairwise cross-correlation has only been computed for f1 vs
+acedio — no within-josh xcorr matrix is committed. The architecture
+decision to default to josh-f1 (not the multi-voice pool) is the one
+this committed provenance check supports; any later move to multi-
+voice (V2 of plan v2) needs either the pairwise matrix computed or
+the within-josh distinctness argument grounded in per-voice f0/
+spectrum stats rather than a cross-correlation result that hasn't
+been measured.
 
 The reframe — promoted to durable status here because two data points
 agree: **the bank's quantization floor (PCM_U8 → ~48 dB SNR) is the
