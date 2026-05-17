@@ -6,7 +6,8 @@ it, only the slicer that regenerates the bank from source.
 
 The source WAV is 3.9s of PCM_U8 mono at 44.1 kHz: 26 letters laid out
 back-to-back, each 0.15s (6615 samples). This script downloads that file,
-slices it into 26 chunks, peak-normalizes each chunk to 0.95, applies short
+slices it into 26 chunks, subtracts per-letter DC offset (so the cut
+starts at zero), peak-normalizes each chunk to 0.95, applies short
 linear fades at the edges so per-letter cuts don't click, and writes
 ``{a..z}.wav`` (PCM_16, mono, 44.1 kHz, 0.15s) into the target directory.
 
@@ -67,6 +68,7 @@ def slice_letters(source_wav: Path, out_dir: Path) -> list[Path]:
     for i in range(N_LETTERS):
         start = i * samples_per_letter
         chunk = audio[start : start + samples_per_letter].copy()
+        chunk = (chunk - float(np.mean(chunk))).astype(np.float32)
         peak = float(np.max(np.abs(chunk)))
         if peak > 0:
             chunk = (chunk / peak * PEAK_NORM).astype(np.float32)

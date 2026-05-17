@@ -64,23 +64,71 @@ Listen verdict (0.75×): TODO.
 
 ## Attempts
 
-### Template (copy for each new attempt)
+### 0001 — DC-remove per letter at extract-time (plan E1a)
 
-#### NNNN — short-name
+- **Date:** 2026-05-16
+- **Status:** tried (awaiting listen verdict)
+- **Branch / commit:** `phase-0/static-log-scaffold`, uncommitted on
+  top of `4362754` (the plan commit). Implementation is in the
+  working tree only — won't be committed until the listen.
+- **Hypothesis:** Letters with measurable DC offset (`f` −0.143,
+  `s` −0.066, `x` −0.051, `z` −0.048, `t` −0.046, `v` −0.041) place
+  a non-zero start sample at each onset. The 5 ms linear fades at
+  the cut edges (the 3 ms / 20 ms fades inside `apply_fades` apply
+  later, at synthesis time) only partially mask this boundary step
+  — especially for `f`, whose offset is an order of magnitude
+  larger than typical. Removing per-letter DC at extract-time
+  should eliminate the step at its source and let it propagate
+  cleanly to both surfaces (A: `spikes/samples/{letter}.wav`; B:
+  rendered output).
+- **Change:** `spikes/00_extract_bank.py:slice_letters` — one new
+  line, `chunk = (chunk - float(np.mean(chunk))).astype(np.float32)`,
+  placed **before** peak-normalize (not after, despite the plan's
+  E1a section saying "between peak-normalize and edge fades"; see
+  `02-synthesis-findings.md` 2026-05-16 entry for why the order
+  was switched). Module docstring updated to reflect the new step.
+- **Measurements (before → after, on the regenerated bank, full
+  letter set — `extract-bank` stats output 2026-05-16):**
 
-- **Date:**
-- **Status:** tried | kept | reverted
-- **Branch / commit:** sha or `uncommitted`
-- **Hypothesis:** why we expect this change to reduce static
-- **Change:** plain-English description of the diff (file + function)
-- **Measurements (before → after):** HF ratio / RMS / DC offset on the
-  letters this is supposed to affect; or end-to-end SNR if relevant
-- **Listen verdict (1.0× / 0.75×):** human ear, required before
-  `kept` / `reverted`. Note clip, bank, pitch-offset, mode (cadence /
-  ASR / mixed). Compare against baseline listen on the same clip.
-- **Decision:** what we learned + next pointer
+  | letter | DC before | DC after  | peak before | peak after | HF before | HF after |
+  |--------|----------:|----------:|------------:|-----------:|----------:|---------:|
+  | a      | (≤0.005)  | +0.0000   | 0.950       | 0.950      | ~0.10     | 0.094    |
+  | f      | **−0.1434** | +0.0019 | 0.950       | 0.950      | 0.54      | 0.556    |
+  | s      | −0.0658   | −0.0020   | 0.950       | 0.950      | 0.74      | 0.749    |
+  | t      | −0.0462   | +0.0016   | 0.950       | 0.950      | 0.53      | 0.540    |
+  | v      | −0.0414   | +0.0005   | 0.950       | 0.950      | 0.31      | 0.313    |
+  | x      | −0.0507   | +0.0001   | 0.950       | 0.950      | 0.75      | 0.758    |
+  | z      | −0.0477   | +0.0007   | 0.950       | 0.950      | 0.35      | 0.355    |
 
-(Delete this template once the first real attempt is appended.)
+  DC: original worst-offenders (f at −0.143) are reduced ~70×.
+  Residual DC is tiny (≤ 0.002 in magnitude) and originates in the
+  post-DC-subtract edge fades — not in the source bank. HF ratio:
+  unchanged by construction (DC has no spectral content above DC).
+  Peak: exactly 0.95 for every letter, including the high-DC ones
+  that the literal plan order would have either clipped (z) or
+  significantly dampened (f to 0.80, s to 0.88).
+- **Listen verdict (Surface A, 1.0×, 2026-05-16, comparison
+  via `spikes/samples-compare/f.wav` = baseline‖e1a):** **no
+  audible difference on `f`** — both versions read as the same
+  "static mess." See findings 2026-05-16 (b) for the reframe:
+  DC offset wasn't `f`'s perceptual problem; edge fades already
+  attenuated the boundary step. The change is real on paper
+  (DC −0.143 → +0.002, peak now exactly 0.95, z no longer clips)
+  but inaudible on Surface A for the worst-DC letter. Other
+  worst-DC letters not yet listened to individually; predicted
+  to be the same (the mid-letter noise dominates on all
+  fricatives).
+- **Listen verdict (Surface B, 1.0× / 0.75×):** TODO. This is the
+  surface where E1a's claim *could* still pay off — concatenated
+  output with many problem letters firing in ASR mode could
+  surface boundary-click reduction that's invisible on Surface A.
+  Worth running before fully closing the experiment.
+- **Decision:** **Keep (correctness).** Even without a perceptual
+  win on Surface A, the change is a free correctness improvement
+  — exact peak = 0.95 for every letter, no clipping on z, clean
+  DC across the bank. Cost is one line. Carrying it forward into
+  the E1b / E2 stack rather than reverting. Re-evaluate after
+  Surface B listen + downstream experiments.
 
 ## Measurement cheatsheet
 
