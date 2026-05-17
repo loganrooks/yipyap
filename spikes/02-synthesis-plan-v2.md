@@ -202,7 +202,10 @@ spikes/samples-josh-f1/` on the fixture.
 **Hypothesis:** Replacing the bank substrate is sufficient to move
 Surface B static from "distractingly hash-y" to "no audible static"
 without touching pipeline code. Predicted from the Surface A listen on
-samples-josh-f1 (already done out-of-band — the "beyond the best" judgement).
+`spikes/samples-josh-f1/` recorded inline in `02-synthesis-log.md`
+entry 0002 (V1) under "Listen verdict (Surface B, 1.0×, 2026-05-16)"
+— the user's verbatim verdict was "omg so much better." That log
+entry is the named artifact this prediction draws from.
 
 **Surfaces:** A (already scored — confirm in log), B (primary).
 

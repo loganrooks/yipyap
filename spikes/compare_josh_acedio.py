@@ -16,15 +16,39 @@ provenance claim about the other seven voices needs to either commit
 that pairwise check or stay grounded in the per-voice stats alone.
 
 Run with the YIPYAP_SPIKES_ROOT env var to override the data root.
+
+Prerequisite: both `samples-josh-f1/` and `samples-baseline/` must
+exist under the data root before running. Populate them with:
+
+    python spikes/extract_josh.py --josh-root <josh source>
+        # writes samples-josh-f1/ (and the other voice banks)
+    python spikes/00_extract_bank.py --out spikes/samples-baseline/
+        # writes the acedio bank as samples-baseline/
+
+The script aborts up-front (with a helpful error) if either directory
+is missing, rather than failing partway through with a confusing
+soundfile read error.
 """
 from __future__ import annotations
 import os
+import sys
 import numpy as np
 import soundfile as sf
 import librosa
 from pathlib import Path
 
 ROOT = Path(os.environ.get("YIPYAP_SPIKES_ROOT", str(Path(__file__).resolve().parent)))
+JOSH_DIR = ROOT / "samples-josh-f1"
+BASELINE_DIR = ROOT / "samples-baseline"
+
+for required in (JOSH_DIR, BASELINE_DIR):
+    if not required.exists():
+        print(
+            f"[compare] ERROR: required directory missing: {required}\n"
+            f"          See module docstring for how to populate it.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
 
 def cross_correlate(a, b):
     """Max-normalized cross-correlation peak between two signals at common SR."""
@@ -41,8 +65,8 @@ def spectral_centroid_hz(x, sr):
     return float(np.mean(librosa.feature.spectral_centroid(y=x, sr=sr)))
 
 print("Comparing josh f1 'a' against acedio baseline 'a':")
-ja, jsr = sf.read(str(ROOT / "samples-josh-f1" / "a.wav"))
-aa, asr = sf.read(str(ROOT / "samples-baseline" / "a.wav"))
+ja, jsr = sf.read(str(JOSH_DIR / "a.wav"))
+aa, asr = sf.read(str(BASELINE_DIR / "a.wav"))
 # Downmix stereo to mono before any resampling — librosa.resample on a
 # 2-D array operates along the channel axis if you don't, which produces
 # garbage. The per-letter loop below has the same guard.
@@ -70,8 +94,8 @@ print(f"  acedio a centroid:   {spectral_centroid_hz(ar.astype(np.float32), asr)
 print("\nPer-letter xcorr (josh-f1 vs acedio):")
 xcorrs = []
 for letter in "abcdefghijklmnopqrstuvwxyz":
-    ja, jsr = sf.read(str(ROOT / "samples-josh-f1" / f"{letter}.wav"))
-    aa, asr = sf.read(str(ROOT / "samples-baseline" / f"{letter}.wav"))
+    ja, jsr = sf.read(str(JOSH_DIR / f"{letter}.wav"))
+    aa, asr = sf.read(str(BASELINE_DIR / f"{letter}.wav"))
     if ja.ndim > 1:
         ja = ja.mean(axis=1)
     if aa.ndim > 1:
