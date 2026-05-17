@@ -26,9 +26,12 @@ Two measurements killed that assumption:
 2. **Cross-bank A/B was decisive.** Same Surface A letters, four banks
    (acedio / equalo / DigiDuncan / joshxviii-f1): joshxviii-f1 was
    audibly cleaner by a wide margin with zero pipeline change.
-   Provenance check (`compare_josh_acedio.py`, 28 cross-correlation
-   pairs, mean xcorr 0.045) confirms it's independent 16-bit material,
-   not a re-processed acedio rip.
+   Provenance check (`compare_josh_acedio.py`, 26 per-letter pairs
+   josh-f1 vs acedio, mean xcorr 0.045) confirms josh-f1 specifically
+   is independent 16-bit material, not a re-processed acedio rip.
+   The other seven josh voices (f2-f4, m1-m4) are visibly distinct
+   from each other and from f1 in the per-voice stats but their
+   independence-from-acedio has not been pairwise measured.
 
 The reframe: **the bank's quantization floor (PCM_U8 → ~48 dB SNR) is
 the ceiling on any pipeline polish.** v1's E1–E5 are cosmetic fixes on

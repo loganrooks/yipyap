@@ -7,11 +7,13 @@ formant structure.
 
 Scope: this script checks **josh-f1 only** against acedio (26 per-letter
 pairs across the alphabet). It does NOT verify provenance for josh
-f2/f3/f4 or m1/m2/m3/m4 — those voices were inspected via cross-
-correlation among themselves in stats_josh.py / josh_stats_full.txt
-but their independence from acedio specifically has not been measured
-here. Any provenance claim about the other seven voices must rely on
-the within-josh distinctness check, not on this script.
+f2/f3/f4 or m1/m2/m3/m4 — those voices' independence from acedio
+specifically has not been measured here. The within-josh distinctness
+argument relies on the per-voice f0/spectrum spread visible in
+stats_josh.py / josh_stats_full.txt; pairwise cross-correlation among
+the eight josh voices is NOT computed by any committed script. Any
+provenance claim about the other seven voices needs to either commit
+that pairwise check or stay grounded in the per-voice stats alone.
 
 Run with the YIPYAP_SPIKES_ROOT env var to override the data root.
 """
@@ -41,6 +43,13 @@ def spectral_centroid_hz(x, sr):
 print("Comparing josh f1 'a' against acedio baseline 'a':")
 ja, jsr = sf.read(str(ROOT / "samples-josh-f1" / "a.wav"))
 aa, asr = sf.read(str(ROOT / "samples-baseline" / "a.wav"))
+# Downmix stereo to mono before any resampling — librosa.resample on a
+# 2-D array operates along the channel axis if you don't, which produces
+# garbage. The per-letter loop below has the same guard.
+if ja.ndim > 1:
+    ja = ja.mean(axis=1)
+if aa.ndim > 1:
+    aa = aa.mean(axis=1)
 print(f"  josh f1 a: {ja.size} samples @ {jsr} = {ja.size/jsr*1000:.0f}ms")
 print(f"  acedio a:  {aa.size} samples @ {asr} = {aa.size/asr*1000:.0f}ms")
 
