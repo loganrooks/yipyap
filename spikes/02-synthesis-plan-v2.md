@@ -102,7 +102,7 @@ bank):
 | DC offset          | `np.mean(s)` per letter                               |
 | Peak               | `np.max(np.abs(s))` per letter                        |
 | RMS                | `sqrt(np.mean(s**2))` per letter                      |
-| HF ratio           | `sum(|FFT|[f>5kHz]) / sum(|FFT|)` per letter          |
+| HF ratio           | `sum(\|FFT\|[f>5kHz]) / sum(\|FFT\|)` per letter      |
 | Spectral flatness  | tonal vs broadband at fixed energy                    |
 | f0 (voice mean)    | `librosa.pyin` median over voiced letters             |
 | f0 spread          | IQR of per-letter pyin medians                        |
@@ -413,7 +413,7 @@ to make the choice deliberately.
 
 ## Sequencing and gates
 
-```
+```text
 V0 baselines (cost + Surface A on josh-f1 + Surface B on acedio)
    |
    V1  ── stop if static gain < +1 (pivot was wrong)

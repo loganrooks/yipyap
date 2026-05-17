@@ -4,14 +4,25 @@ If josh is upsampled acedio: high cross-correlation peak at zero lag after
 optimal time/scale alignment, similar spectrum shape, identical relative
 duration ratios. If it's a different recording: low correlation, different
 formant structure.
+
+Scope: this script checks **josh-f1 only** against acedio (26 per-letter
+pairs across the alphabet). It does NOT verify provenance for josh
+f2/f3/f4 or m1/m2/m3/m4 — those voices were inspected via cross-
+correlation among themselves in stats_josh.py / josh_stats_full.txt
+but their independence from acedio specifically has not been measured
+here. Any provenance claim about the other seven voices must rely on
+the within-josh distinctness check, not on this script.
+
+Run with the YIPYAP_SPIKES_ROOT env var to override the data root.
 """
 from __future__ import annotations
+import os
 import numpy as np
 import soundfile as sf
 import librosa
 from pathlib import Path
 
-ROOT = Path("/home/rookslog/workspace/projects/yipyap/spikes")
+ROOT = Path(os.environ.get("YIPYAP_SPIKES_ROOT", str(Path(__file__).resolve().parent)))
 
 def cross_correlate(a, b):
     """Max-normalized cross-correlation peak between two signals at common SR."""

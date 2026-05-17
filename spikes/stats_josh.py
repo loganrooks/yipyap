@@ -1,12 +1,20 @@
-"""Generate per-letter stats and pitch summary for each josh voice."""
+"""Generate per-letter stats and pitch summary for each josh voice.
+
+Reads sample banks from this script's directory by default (i.e. the
+spikes/ tree it lives in). Override with the YIPYAP_SPIKES_ROOT
+environment variable for ad-hoc runs against a different checkout —
+spike code is throwaway per docs/spike-plan.md so we don't expose a
+full argparse surface.
+"""
 from __future__ import annotations
 
+import os
 import numpy as np
 import soundfile as sf
 import librosa
 from pathlib import Path
 
-ROOT = Path("/home/rookslog/workspace/projects/yipyap/spikes")
+ROOT = Path(os.environ.get("YIPYAP_SPIKES_ROOT", str(Path(__file__).resolve().parent)))
 
 VOICES = [
     "samples-josh-f1", "samples-josh-f2", "samples-josh-f3", "samples-josh-f4",
@@ -33,16 +41,20 @@ def stats_for_voice(d: Path):
         freqs = np.fft.rfftfreq(audio.size, 1 / sr)
         hf = float(spec[freqs > 5000].sum() / (spec.sum() + 1e-12))
         dc = float(np.mean(audio))
-        # pyin pitch
+        # pyin pitch. librosa.pyin raises ParameterError for inputs that
+        # are too short or otherwise unanalyzable; we mark those as NaN so
+        # they're visible downstream rather than colliding with a real
+        # 0.0 Hz reading. Any other exception is unexpected and surfaces
+        # rather than being silently coerced to a default.
         try:
             f0, _, _ = librosa.pyin(
                 audio, fmin=80.0, fmax=600.0, sr=sr, frame_length=1024
             )
             valid = f0[~np.isnan(f0)] if f0 is not None else np.array([])
-            f0_med = float(np.median(valid)) if valid.size else 0.0
-        except Exception:
-            f0_med = 0.0
-        if f0_med > 0:
+            f0_med = float(np.median(valid)) if valid.size else float("nan")
+        except librosa.util.exceptions.ParameterError:
+            f0_med = float("nan")
+        if not np.isnan(f0_med) and f0_med > 0:
             pitches.append(f0_med)
         rows.append((letter, peak, rms, hf, dc, f0_med))
     return rows, pitches
@@ -77,5 +89,5 @@ for v in [f"samples-josh-{x}" for x in ["f1","f2","f3","f4","m1","m2","m3","m4"]
     print("\n| ltr | peak | rms | hf5k | dc | f0 Hz |")
     print("|-----|-----:|----:|----:|---:|------:|")
     for letter, peak, rms, hf, dc, f0 in rows:
-        f0s = f"{f0:.1f}" if f0 > 0 else "—"
+        f0s = f"{f0:.1f}" if (not np.isnan(f0) and f0 > 0) else "—"
         print(f"| {letter} | {peak:.3f} | {rms:.3f} | {hf:.3f} | {dc:+.4f} | {f0s} |")

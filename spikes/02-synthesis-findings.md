@@ -106,12 +106,16 @@ was unambiguous enough that no synthesis-side experiment needed to
 intervene to confirm it.
 
 The provenance check then established that this wasn't acedio
-re-processed. 28 cross-correlation pairs between josh's eight voices
-and acedio's bank gave a mean xcorr of 0.045 (all pairs < 0.5),
-inconsistent with shared source material. Josh's bank is independently
-recorded 16-bit per-letter audio across 8 voices — fundamentally
-different recording conditions, not a polished version of the same
-substrate.
+re-processed. `compare_josh_acedio.py` cross-correlated josh-f1's 26
+letters against acedio's corresponding letters: mean xcorr 0.045, max
+0.18 — same-recording correlation would land > 0.7. **josh-f1 is
+definitively not acedio-derived.** This narrower claim is what the
+script measures; the other seven josh voices (f2-f4, m1-m4) were
+inspected via cross-correlation *among themselves* in
+`stats_josh.py` (28 pairs, all < 0.5 — mutually distinct), but their
+independence from acedio specifically has not been measured here, and
+the architecture decision to default to josh-f1 (not the multi-voice
+pool) is the one this provenance check supports.
 
 The reframe — promoted to durable status here because two data points
 agree: **the bank's quantization floor (PCM_U8 → ~48 dB SNR) is the
@@ -119,8 +123,10 @@ ceiling on any pipeline polish.** Everything v1 sequenced as E1–E5
 (DC removal, loudness rebalance, LPF retune, anti-aliased resample,
 constant-power crossfade) is cosmetic relative to that floor. The
 v1 framing implicitly assumed acedio was workable substrate and the
-synthesis pipeline was where the static came from. It isn't and
-isn't. The substrate is replaceable; that's the lever.
+synthesis pipeline was where the static came from. Neither
+assumption survives the data: the substrate isn't workable, and the
+pipeline isn't the bottleneck. The substrate is replaceable; that's
+the lever.
 
 What this changes:
 

@@ -280,14 +280,30 @@ Short-term sound at the cost of long-term distributability. Don't.
 
 ### Reproducibility
 
-- Extraction: `/tmp/extract_josh.py` (run with `.venv-spikes/bin/python`)
-- Per-letter stats: `/tmp/stats_josh.py` → `/tmp/josh_stats_full.txt`
-- josh vs acedio xcorr: `/tmp/compare_josh_acedio.py` (mean 0.045)
-- josh repo state: `/tmp/josh` @ `fa8af5a`; audio imported at
-  `2732629` (2025-02-09), sprites at `4e6df93` (2025-04-21), Korean at
-  `b17e3cb` (2025-12-17).
+The exact commands below were run on the 2026-05-16 session host
+(`dionysus`) where the scripts originally lived under `/tmp/` and a
+local venv at `.venv-spikes/`. The committed reproducibility scripts
+have since moved into `spikes/` so this section is updated to the
+portable invocation; the historical local paths are kept in
+parentheses for cross-reference with the on-disk artefacts produced
+that day.
+
+- Extraction: `python spikes/extract_josh.py --josh-root <where you
+  unpacked joshxviii/animalese-typing-desktop>`
+  (originally run from `/tmp/extract_josh.py` against `/tmp/josh`)
+- Per-letter stats: `python spikes/stats_josh.py >
+  spikes/josh_stats_full.txt`
+  (originally `/tmp/stats_josh.py` → `/tmp/josh_stats_full.txt`)
+- josh-f1 vs acedio xcorr: `python spikes/compare_josh_acedio.py`
+  — mean 0.045 across 26 per-letter pairs against the acedio bank
+  (originally `/tmp/compare_josh_acedio.py`)
+- josh repo state at extract time: `/tmp/josh` @ `fa8af5a`; audio
+  imported at `2732629` (2025-02-09), sprites at `4e6df93`
+  (2025-04-21), Korean at `b17e3cb` (2025-12-17).
 - Output: `spikes/samples-josh-{f1..f4,m1..m4,korean-f1}/` —
   26 × 200 ms × 44.1 kHz mono PCM_16, peak 0.95.
+- All three scripts respect `YIPYAP_SPIKES_ROOT` (env var) so an
+  out-of-tree run can point the data root somewhere else.
 
 ### External references
 

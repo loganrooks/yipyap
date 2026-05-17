@@ -192,17 +192,31 @@ Removed on success unless `--keep-temp` (Phase 3+).
   substrate is `joshxviii/animalese-typing-desktop`'s 16-bit per-letter
   recordings, eight independently-recorded voices, 200 ms per letter
   at 44.1 kHz (see `spikes/02-synthesis-research-josh.md`). Phase 1
-  ships with `josh-f1` as a single-voice default; multi-voice mapping
-  (V2 of plan v2) is the natural Phase 1 follow-up.
+  ships with `josh-f1` as a single-voice default. (Caveat: the
+  companion research doc recommends keeping acedio as the committed
+  default if yipyap is shipped publicly, citing provenance risk of
+  redistributing josh's recordings under MIT. yipyap is a personal /
+  private tool — the threat model the research doc was framing
+  against does not apply — so the architecture chooses josh-f1 for
+  audible quality and accepts the bank as a not-redistributed
+  runtime asset. If yipyap's distribution scope ever changes,
+  revisit this decision.) Multi-voice mapping (V2 of plan v2) is the
+  natural Phase 1 follow-up.
 - **Diarization (decided 2026-05-16, Spike B, partial):** the spike
   uses an in-house `cluster_speakers_by_pitch` in
   `spikes/02_synthesis.py` as a poor-man's diarization (pitch-based
-  clustering, anonymous, in-clip only). Phase 1 should keep this as a
-  CPU-only fallback but prefer pyannote/speaker-diarization-3.1 (or
-  equivalent embedding-based method) when available, both for
-  in-clip quality and for the cross-clip speaker-identity workflow
-  proposed in `docs/speaker-workflow-plan.md`. The embedding spike
-  ("Pre-adoption work" in that plan) is the gating item.
+  clustering, anonymous, in-clip only). Phase 1 MVP is single-voice
+  (`speaker_id` always `None`), which keeps it compatible with the
+  current `VISION.md` non-goal of "treating mix as one voice stem."
+  Multi-voice rendering — and the embedding-based diarization that
+  enables cross-clip speaker identity — is a Phase 1 stretch / Phase
+  2 item, gated on: (a) the embedding-stability spike landing
+  positive, and (b) the `VISION.md` non-goal being revised. The
+  proposed workflow for that path is `docs/speaker-workflow-plan.md`
+  (lands separately under PR #10 / `docs/speaker-workflow-plan` —
+  if you're reading this before that PR merges, the workflow doc
+  isn't in-tree yet; the design is captured there pending VISION
+  revision).
 
 These were listed in `docs/spike-plan.md` and are recorded here as
 Phase 0 closes.

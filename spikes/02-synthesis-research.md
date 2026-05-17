@@ -9,7 +9,17 @@
 `Acedio/animalese.js` has **54 forks** ([list][acedio-forks]). I scanned
 all of them; none modify `animalese.wav`. Every fork ships the identical
 SHA `6eca39…a5da` blob (PCM_U8, 44.1 kHz, mono, ~3.9 s, 26×0.15 s, CC BY 4.0
-per [LICENSE.md][acedio-license]). The only fork worth flagging:
+per [LICENSE.md][acedio-license]).
+
+> **How verified** (2026-05-16): `gh api repos/acedio/animalese.js/forks
+> --paginate --jq '.[].full_name'` enumerated the 54 forks; for each,
+> the bank file at `animalese.wav` was checked via
+> `gh api repos/<fork>/contents/animalese.wav --jq .sha`. All returned
+> the same blob SHA `6eca39…a5da` as upstream. The pagination cursor
+> was exhausted (no further pages) at the time of the query — there
+> may be forks created after that date that this audit doesn't cover.
+
+The only fork worth flagging:
 
 - **[Wexx/animalese.js-text-animation][wexx]** — adds a typewriter visualizer;
   same bank. License: not declared on the fork. **Interesting for us:** no — bank unchanged.

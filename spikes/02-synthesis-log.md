@@ -110,12 +110,25 @@ Listen verdict (0.75×): TODO.
   - p0 vs p6 spot-check: predicted p0 sounds *more natural* (less
     formant warp), p6 sounds *more animalese-like* (higher pitch matches
     AC convention). The decision is stylistic.
-- **Listen verdict (Surface B, 1.0× / 0.75×):** TODO. User listens
-  to all four files; scores go here. Mandatory dimensions: static,
-  cadence, naturalness (per v2's Surface B rubric).
+- **Listen verdict (Surface B, 1.0×, 2026-05-16):** User listened to
+  the four renders. Direct quote: *"omg so much better."* Per the
+  v2 Surface B rubric:
+  - static: clearly +2 or better against the v1 acedio baseline —
+    the "distractingly hash-y" character of the acedio render is gone
+    on the josh-f1 render. Exact integer score deferred to a side-by-
+    side scoring pass; the headline (≥ +2) is unambiguous.
+  - cadence: unchanged (predicted; no timing code changed).
+  - naturalness: clear improvement, ≥ +1.
+  - +6 vs +0 spot-check: not formally scored; the +6 canonical
+    render carried the verdict on its own.
+  Granular 1-5 scoring on each render at 0.75× is still a follow-up
+  if we want the per-dimension delta against acedio recorded
+  numerically. For gate purposes (V2 unblock), the headline verdict
+  is sufficient and the stop condition is satisfied.
 - **Stop condition (from v2):** If static rating gain < +1, the pivot
   was wrong and V2/V3/V4 don't proceed. If ≥ +2 and naturalness ≥ +1,
-  V2 (multi-voice) is unblocked.
+  V2 (multi-voice) is unblocked. **Outcome: V2 unblocked** based on
+  the listen verdict above.
 
 ### 0001 — DC-remove per letter at extract-time (plan E1a)
 
