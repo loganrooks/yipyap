@@ -1,5 +1,28 @@
 # Phase 1 PR Plan
 
+> **⚠ Partially superseded by Phase 0 findings (2026-05-17).** PR 4
+> (Analyzer) and PR 5 (Synthesizer) scopes below are stale relative
+> to `docs/architecture.md` "Decisions deferred" (now closed) and
+> "Contract changes implied by Phase 0 findings":
+>
+> - PR 4 still describes onset+pitch analyzer modules
+>   (`onsets.py`, `pitch.py`) emitting `list[VoiceEvent]`. The
+>   Phase 0 analyzer-driver decision is **ASR-driven**; the actual
+>   Phase 1 analyzer is ASR + diarization → `list[WordEvent]`.
+> - PR 5 still passes `VoiceEvent` to a single-bank synthesizer. The
+>   actual Phase 1 synthesizer is multi-bank-aware and keyed off
+>   `WordEvent.speaker_id` (with `None` = single-voice for MVP).
+>
+> Updated PR 4/PR 5 scopes will land in a dedicated PR-plan revision
+> before Phase 1 starts. The other six PRs (scaffold, separator,
+> mixer, integration glue, CLI polish, tests) are not affected by
+> the Phase 0 contract changes and stand as written.
+>
+> If you're a contributor about to pick up PR 4 or PR 5: don't
+> implement the scope below. Wait for the revision, or pair-think
+> through the `WordEvent` / multi-bank shape against
+> `docs/architecture.md`.
+
 Eight PRs, each independently mergeable, each leaves `main` runnable. Branch from `main`,
 PR back into `main`. Sequence matters only where noted.
 

@@ -94,3 +94,76 @@ fixes (DC, peak-norm hygiene) should be deprioritized vs.
 floor-lifting fixes (dither / re-quantize, anti-alias resample,
 re-source bank) when the perceptual rubric is "does it sound less
 staticky."
+
+## 2026-05-16 (c) — The pivot: bank source is the floor
+
+E1a's null result on Surface A was the first data point. The second
+arrived from a different direction: a cross-bank A/B comparison
+(acedio / equalo / DigiDuncan / joshxviii-f1) on the same Surface A
+letters. **joshxviii-f1 sounded audibly cleaner by a wide margin
+with zero pipeline change.** The user's verdict — "beyond the best" —
+was unambiguous enough that no synthesis-side experiment needed to
+intervene to confirm it.
+
+The provenance check then established that this wasn't acedio
+re-processed. `compare_josh_acedio.py` cross-correlated josh-f1's 26
+letters against acedio's corresponding letters: mean xcorr 0.045, max
+0.18 — same-recording correlation would land > 0.7. **josh-f1 is
+definitively not acedio-derived.** This narrower claim is what the
+script measures; the other seven josh voices (f2-f4, m1-m4) are
+visibly distinct from each other and from f1 in the per-voice stats
+(`josh_stats_full.txt` shows ~285 Hz f0 spread across the 8 voices),
+but pairwise cross-correlation has only been computed for f1 vs
+acedio — no within-josh xcorr matrix is committed. The architecture
+decision to default to josh-f1 (not the multi-voice pool) is the one
+this committed provenance check supports; any later move to multi-
+voice (V2 of plan v2) needs either the pairwise matrix computed or
+the within-josh distinctness argument grounded in per-voice f0/
+spectrum stats rather than a cross-correlation result that hasn't
+been measured.
+
+The reframe — promoted to durable status here because two data points
+agree: **the bank's quantization floor (PCM_U8 → ~48 dB SNR) is the
+ceiling on any pipeline polish.** Everything v1 sequenced as E1–E5
+(DC removal, loudness rebalance, LPF retune, anti-aliased resample,
+constant-power crossfade) is cosmetic relative to that floor. The
+v1 framing implicitly assumed acedio was workable substrate and the
+synthesis pipeline was where the static came from. Neither
+assumption survives the data: the substrate isn't workable, and the
+pipeline isn't the bottleneck. The substrate is replaceable; that's
+the lever.
+
+What this changes:
+
+1. **v1 plan is superseded but preserved** (`02-synthesis-plan.md`
+   keeps its banner pointing here, but the rest is unchanged — the
+   mismatch between v1's predictions and what we measured IS the
+   learning signal, and editing the plan would destroy that).
+2. **v2 plan exists** (`02-synthesis-plan-v2.md`) with new scope:
+   V1 josh-f1 single-voice integration, V2 multi-voice mapping,
+   V3 jitter port, V4 yelling-on-RMS, V5 cross-bank A/B at
+   Surface C.
+3. **E1a stays committed** because the correctness wins are real
+   (peak exactly 0.95, no clipping on z, DC ≤ 2e−3) even though the
+   perceptual win didn't materialise. The lesson — operation order
+   matters for amplitude chains — generalises beyond this spike.
+4. **The original "static-mitigation" framing dissolves.** Static is
+   no longer the question once the bank is replaced; the questions
+   become "which voice for which speaker," "how much jitter," "does
+   yelling earn its keep." Surface C is added to formalise the
+   listening surface where mapping decisions become attributable.
+
+There's a sub-lesson here worth flagging for `docs/lessons.md` once
+v2 V1 confirms the prediction transfers through synthesis: **when an
+experiment line returns null on its first cheap test, before
+spending more on the next, check whether the question itself is
+still load-bearing.** The DC removal returning null didn't mean
+"try harder DC fixes" — it meant "you're asking the wrong question
+about where static comes from." The cross-bank listen was the test
+that asked a different question entirely, and the answer reorganized
+the whole plan.
+
+This finding marks the end of the E1–E5 line of attack. Future
+entries in `02-synthesis-log.md` should reference v2 venture numbers
+(V0, V1, …), not v1 experiment numbers, except when explicitly
+revisiting a v1 verdict.
