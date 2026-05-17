@@ -11,7 +11,10 @@
 yipyap as currently scoped is a stateless `input.mp3 → output.mp3` CLI.
 That shape stops working as soon as we want:
 
-1. Multiple voices in the output (V2 of `02-synthesis-plan-v2.md`).
+1. Multiple voices in the output (V2 of `spikes/02-synthesis-plan-v2.md` —
+   that document lands separately via PR #9 / `phase-0/bank-pivot`; if
+   you're reading this on `main` before that PR merges, the v2 plan
+   isn't in-tree yet).
 2. A speaker's identity to persist across clips so the same commentator
    gets the same voice in every broadcast we process.
 3. The user to label discovered speakers so subtitle text-boxes (if
@@ -52,19 +55,22 @@ that re-running the cheap repeatable stage (render) doesn't re-trigger
 the slow stages (ingest), and so the human-in-loop stage (label) is
 separable from both.
 
-```
+```text
 clip.mp4
    │
    ▼ ingest         heavy: separation + ASR + diarization + embeddings.
    │                run once unless source clip changes.
    │
-clip.ingest.json    ── anonymous clusters, embeddings, ASR, provenance
+clip.ingest.json     ── anonymous clusters, embeddings, ASR, provenance
+clip.speakers.json   ── pre-label sidecar: proposed matches per cluster
+                        (written by ingest, edited by label)
    │
    ▼ label          interactive: human listens + names clusters.
    │                proposes matches against library; user accepts/edits.
+   │                rewrites clip.speakers.json post-validation.
    │
-clip.speakers.json  ── labels, confidence, library updates queued
-~/.yipyap/speakers/ ── library state, updated on successful label
+clip.speakers.json   ── post-label: confirmed labels + ignore/merge/split state
+~/.yipyap/speakers/  ── library state, updated on successful label
    │
    ▼ render         fast, deterministic: synthesizer + mixer + overlay.
    │                re-runnable after profile tweaks without re-ingest.
@@ -73,9 +79,14 @@ clip.render.json    ── per-letter timing + voice-bank assignments
 clip-out.mp4        ── final audio (and overlay, if video phase lands)
 ```
 
-Caching rule: each artifact records the mtime + sha of its inputs.
-A stage re-runs when its inputs are newer or different. Stale-cache
-detection is by file metadata, not by version flags.
+Caching rule: each artifact records the mtime + sha of its source
+inputs **and** a tooling-version fingerprint (yipyap version, schema
+version, and the named backends — ASR model, diarization model,
+embedding model). A stage re-runs when any of those change. Schema
+or backend changes invalidate stale caches even if the source file
+is byte-identical — otherwise upgrading yipyap would silently render
+new clips against old analysis. See the `clip.ingest.json` schema
+below for the exact fields.
 
 ### Per-stage detail
 
@@ -97,8 +108,10 @@ Operations:
 6. Match each cluster's embedding against `~/.yipyap/speakers/*.json`,
    record top-3 matches with cosine similarity.
 
-Output: `clip.ingest.json` (see schema below) plus the
-`clip-speakers/` listening-kit directory.
+Output: `clip.ingest.json` (see schema below), the pre-label
+`clip.speakers.json` sidecar (proposed matches per cluster, ready
+for the label stage to read), and the `clip-speakers/` listening-kit
+directory.
 
 Idempotent: re-running ingest on an unchanged clip is a no-op (cache
 hit). Re-running after the library has gained speakers should refresh
@@ -139,14 +152,20 @@ Confidence tiers gate ask volume:
   a name (new profile created) or marks `ignore`.
 
 On save:
-1. Validation: every cluster has either `label` set or `ignore: true`
-   or `merge_with` set. Anything else is an error.
+1. Validation: every cluster must have one resolved disposition —
+   `label` set, `ignore: true`, `merge_with: <other_cluster_id>`,
+   or `split: {...}` (the four valid terminal states). Anything else
+   is an error.
 2. Library updates: new labels create profiles; existing profiles get a
    new contribution entry (see library schema). Centroid embeddings
-   recompute from contributions.
-3. `clip.speakers.json` is rewritten with confirmed assignments only
+   recompute from contributions. Ignored / merged / split clusters do
+   not contribute to any profile.
+3. `clip.speakers.json` is rewritten with confirmed dispositions only
    (the proposed-match noise is dropped — the durable artifact is the
-   user's decision, not the candidates).
+   user's decision, not the candidates). All four disposition kinds
+   are preserved in the post-label artifact so render can resolve
+   each ASR word's original cluster_id deterministically (see the
+   post-label schema below).
 
 #### Render
 
@@ -180,22 +199,27 @@ plan is adopted.
 ```json
 {
   "yipyap_version": "0.0.0-dev",
+  "schema_version": 1,
   "source": {
     "path": "clip.mp4",
     "sha256": "...",
+    "mtime": "2026-05-16T21:30:00Z",
     "duration_s": 30.0,
     "ingested_at": "2026-05-16T21:45:00Z"
   },
+  "tooling": {
+    "asr_backend": "faster-whisper",
+    "asr_model": "large-v3-turbo",
+    "diarization_backend": "pyannote-3.1",
+    "embedding_backend": "ecapa-tdnn"
+  },
   "asr": {
-    "backend": "faster-whisper",
-    "model": "large-v3-turbo",
     "words": [
       {"text": "Verstappen", "start_s": 1.20, "end_s": 1.85, "cluster_id": 0},
       {"text": "ahead", "start_s": 1.92, "end_s": 2.10, "cluster_id": 0}
     ]
   },
   "diarization": {
-    "backend": "pyannote-3.1",
     "turns": [
       {"start_s": 1.18, "end_s": 8.40, "cluster_id": 0},
       {"start_s": 8.50, "end_s": 14.20, "cluster_id": 1}
@@ -218,6 +242,10 @@ plan is adopted.
   ]
 }
 ```
+
+The cache fingerprint is `(source.sha256, source.mtime,
+yipyap_version, schema_version, tooling.*)` — any change invalidates
+the artifact and triggers re-ingest.
 
 ### `clip.speakers.json`
 
@@ -244,14 +272,24 @@ Two states. **Pre-label** (generated by ingest, ready for human edit):
 }
 ```
 
-**Post-label** (rewritten by label stage after validation):
+**Post-label** (rewritten by label stage after validation): every
+original cluster_id from the ingest artifact must appear exactly once
+here, with one of four dispositions. Render reads this file and
+resolves each ASR word's original cluster_id deterministically:
 
 ```json
 {
   "labeled_at": "2026-05-16T21:50:00Z",
   "clusters": [
-    {"cluster_id": 0, "label": "Crofty"},
-    {"cluster_id": 1, "label": "Brundle"}
+    {"cluster_id": 0, "disposition": "label", "label": "Crofty"},
+    {"cluster_id": 1, "disposition": "label", "label": "Brundle"},
+    {"cluster_id": 2, "disposition": "ignore", "reason": "PA announcer"},
+    {"cluster_id": 3, "disposition": "merge_with", "target_cluster_id": 0},
+    {"cluster_id": 4, "disposition": "split",
+     "ranges": [
+       {"start_s": 100.0, "end_s": 130.0, "label": "Crofty"},
+       {"start_s": 130.0, "end_s": 160.0, "label": "Brundle"}
+     ]}
   ]
 }
 ```
@@ -314,17 +352,23 @@ yipyap ingest clip.mp4                    # heavy: separation+ASR+diarize+embed
 yipyap label clip.mp4                     # opens sidecar in $EDITOR (or TUI later)
 yipyap render clip.mp4 out.mp4            # fast: synth + mix from cached artifacts
 
-# composed convenience (for the simple case)
-yipyap clip.mp4 out.mp4                   # = ingest + label-if-all-HIGH + render
-                                          # errors if any cluster is below HIGH
+# composed convenience (for the simple case) — explicit confirmation step
+yipyap clip.mp4 out.mp4                   # = ingest + label + render, with the
+                                          # label step always run (one keypress
+                                          # per cluster if all HIGH; full review
+                                          # if any MID/LOW). Never silently
+                                          # writes to the library.
 
 # library management
 yipyap speakers list                       # name, contributions, voice_bank
 yipyap speakers show Crofty                # full profile
 yipyap speakers rename "Speaker 0" Crofty  # cross-clip back-fill
 yipyap speakers merge tmp_3 Crofty         # collapse duplicate (e.g. mislabel)
+# un-poison after a misassignment (comment moved off the continuation line
+# so the shell actually treats this as one command):
 yipyap speakers remove-contribution \
-    Crofty --clip abu_dhabi_60-90.mp4 \    # un-poison after a misassignment
+    Crofty \
+    --clip abu_dhabi_60-90.mp4 \
     --cluster 0
 yipyap speakers delete Crofty              # nuclear option
 
@@ -332,10 +376,15 @@ yipyap speakers delete Crofty              # nuclear option
 yipyap status clip.mp4                     # what's cached, what's stale
 ```
 
-Defaults: `yipyap clip.mp4 out.mp4` errors instead of doing
-non-deterministic work — refusing to silently auto-assign speakers it
-isn't confident about. The user has to either run `label` explicitly
-or pass `--auto-label-low-confidence` to opt into the risky path.
+Defaults: `yipyap clip.mp4 out.mp4` never bypasses the label stage.
+Even on an all-HIGH clip, the user is asked to confirm the proposed
+labels — a one-keypress confirmation in the typical case, but the
+confirmation event is what writes contributions into the library.
+Writing to the library is never silent — a false-HIGH match would
+otherwise poison the matched profile before the user saw it. If you
+want to short-circuit even the keypress, `--auto-confirm-high` is the
+explicit opt-in, and it logs every auto-accepted assignment so a bad
+write is recoverable from the log.
 
 ## Failure modes and what they look like
 
