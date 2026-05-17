@@ -1,5 +1,31 @@
 # Spike B — synthesis static-mitigation plan
 
+> **⚠ Superseded 2026-05-16 by `02-synthesis-plan-v2.md`.** Kept intact as
+> historical record — not as a moving target. The E1–E5 sequencing below
+> assumes the static comes primarily from the *pipeline* operating on a
+> fundamentally usable bank. Two data points contradicted that:
+>
+> 1. E1a (extract-time DC removal) returned **no audible difference** on
+>    fricatives at Surface A. The mid-letter PCM_U8 quant hash plus the
+>    intrinsic broadband noise of the recorded /f/ dominate; DC cleanup
+>    polishes a surface the ear never visits. Findings 2026-05-16 (b).
+> 2. Cross-bank comparison (acedio / equalo / DigiDuncan / joshxviii-f1)
+>    on the same Surface A letters: joshxviii's bank was audibly cleaner
+>    by a wide margin, with no pipeline change. That bank is independently
+>    recorded 16-bit material across 8 voices (research-josh.md §3).
+>
+> **The reframe**: bank source is the floor, not the ceiling we polish
+> toward. E1–E5 are cosmetic touch-ups on a broken substrate. The v2 plan
+> replaces them with bank-integration + multi-voice mapping + modulation
+> port. See `02-synthesis-plan-v2.md` and findings 2026-05-16 (c).
+>
+> The original text is unchanged below this banner. Where it predicts an
+> outcome that has since been measured, the log and findings record the
+> mismatch — the mismatch *is* the learning signal, and editing the plan
+> would erase it.
+
+---
+
 > Sub-plan within `docs/spike-plan.md` Spike B. Coordinates the
 > structured investigation into reducing audible static in animalese
 > output. Companion docs: `02-synthesis-log.md` (per-attempt data),
