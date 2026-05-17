@@ -1,0 +1,122 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# yipyap CodeRabbit configuration.
+#
+# Inherits from loganrooks/coderabbit (Central YAML). That layer covers
+# the portable rules: AI-failure-mode review, test-quality, overclaim
+# language on Markdown, the W/V/B PR-description pre-merge check.
+# Anything below is repo-specific.
+inheritance: true
+
+reviews:
+  # Exclude generated, telemetry, and pure-data paths from review.
+  path_filters:
+    - '!.planning/**'              # GSD telemetry, not source
+    - '!spikes/output/**'          # spike render outputs (gitignored anyway)
+    - '!spikes/inputs/**'          # spike source clips (gitignored anyway)
+    - '!spikes/samples/**'         # extracted bank — data, not code
+    - '!spikes/samples-*/**'       # bank variants — data, not code
+    - '!spikes/samples-compare/**' # listening comparison renders — data
+    - '!spikes/josh_stats_full.txt'  # raw stats dump, not for review
+
+  path_instructions:
+    - path: 'src/yipyap/**'
+      instructions: |-
+        Production code for the Phase 1+ CLI. Cross-stage contracts in
+        docs/architecture.md ("Data shapes between stages") are
+        load-bearing across the codebase — flag in-passing contract
+        changes; they should be their own PR per CLAUDE.md house rules
+        ("Don't refactor module contracts mid-PR").
+
+        Stage modules must be pure functions of their inputs — no
+        global state. Errors raise YipyapError with a human-readable
+        message. Flag any silent fallback (returning None on failure,
+        zero-filled audio "just to keep going," empty list when the
+        operation can't produce a result). YipyapError or a typed
+        subclass is the only acceptable failure mode.
+
+        Audio arrays are numpy float32. Shape must be documented in
+        every function that takes or returns audio. Mono is (N,),
+        stereo is (N, 2). Flag dicts crossing stage boundaries —
+        contracts use dataclasses (SeparationResult, WordEvent, etc.).
+
+        Python 3.11+. `from __future__ import annotations` at the top
+        of every module per CLAUDE.md.
+
+    - path: 'spikes/**/*.py'
+      instructions: |-
+        Throwaway research code per docs/spike-plan.md. Different
+        standards from src/yipyap/ — verbose comments, prose
+        explanations, hardcoded paths, and one-off scripts are
+        expected. Don't flag spikes for lack of tests, abstraction,
+        or "for re-use" cleanups; those are explicitly out of scope
+        per CLAUDE.md ("Don't tidy the spike code 'for re-use.' It's
+        throwaway").
+
+        Do still flag actual bugs (off-by-one, divide-by-zero, file
+        handles not closed, silent except-pass). The spike code
+        produces measurements that decisions are based on — incorrect
+        measurements poison the decisions.
+
+    - path: 'spikes/*.md'
+      instructions: |-
+        Lab-notebook style. Predict-before-measure is the discipline:
+        prediction tables are written before listening, the listen
+        verdict follows. Flag PRs that delete or rewrite existing
+        predictions instead of adding a new entry — mismatches
+        between prediction and reality are the learning signal, and
+        editing the prediction erases it.
+
+        02-synthesis-log.md entries are append-only (one section per
+        attempt). 02-synthesis-findings.md sections are append-only
+        and dated. Both files have explicit "don't rewrite old
+        entries" rules in their headers.
+
+    - path: 'docs/listening-log.md'
+      instructions: |-
+        Required on any PR that affects audible output. PRs that
+        change synthesis behavior, mixer behavior, sample-bank
+        selection, or pitch-shift parameters should add a
+        listening-log entry recording what was listened to and the
+        verdict. Flag the absence.
+
+        Golden test outputs must not be regenerated without a
+        listening verdict per CLAUDE.md ("Don't regenerate golden
+        test outputs without listening to them and recording the
+        listen"). Flag bulk golden regeneration PRs.
+
+    - path: 'docs/architecture.md'
+      instructions: |-
+        Module contracts and pipeline shape. The "Data shapes between
+        stages" section is load-bearing across the codebase. Flag any
+        contract changes (dataclass fields, function signatures)
+        bundled with implementation work — per CLAUDE.md they should
+        be their own PR.
+
+        The "Decisions deferred until Phase 0 findings land" section
+        records empirical decisions, not proposals. Each entry should
+        cite the date and the spike that produced the decision.
+
+    - path: 'VISION.md'
+      instructions: |-
+        Goal-pinning document. Per CLAUDE.md, changes here are
+        deliberate revisions, not in-passing edits. Flag PRs that
+        modify VISION as a side effect of an implementation change —
+        VISION revisions should be either their own PR or prominently
+        called out in the description with a justification grounded
+        in measurement.
+
+    - path: 'ROADMAP.md'
+      instructions: |-
+        Phases and exit criteria. Each phase has a Guard — a
+        condition that should stop progression if unmet. Flag PRs
+        that begin Phase N+1 work without the Phase N guard being
+        satisfied (e.g., Phase 1 work landing without Phase 0 exit
+        criteria recorded).
+
+    - path: 'CLAUDE.md'
+      instructions: |-
+        Team agreement and agent conventions. Changes should be
+        explicit policy revisions. Flag in-passing edits — the file
+        is read by every contributor (human and agent) before
+        working, so silent changes are confusing.
