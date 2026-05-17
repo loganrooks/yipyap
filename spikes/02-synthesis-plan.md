@@ -162,6 +162,16 @@ cadence / timbre / ASR modes (per the README invocations) and score.
 **Where:** `spikes/00_extract_bank.py:slice_letters`, between
 peak-normalize and edge fades.
 
+> *Implementation note (2026-05-17):* The actual extraction subtracts
+> DC *before* peak-normalize, not between peak-normalize and fades.
+> The literal plan order clipped `z` at the PCM_16 ceiling — see
+> findings 2026-05-16 (a) for the recorded mismatch and operation-
+> order lesson. **This prediction is preserved unchanged** per the
+> banner at the top of this file: the mismatch between prediction
+> and implementation IS the learning signal, and rewriting the
+> prediction would erase it. Read this section as the original plan,
+> not the current implementation.
+
 **Hypothesis:** Per-letter DC offset (f −0.143, s −0.066, x −0.051,
 z −0.048, t −0.046, v −0.041) places a non-zero sample at every
 letter start/end. The 3 ms fade-in / 20 ms fade-out only partially
@@ -501,3 +511,9 @@ Pattern recognition across mismatches gets distilled into
 
 - 2026-05-16 — initial plan written. Baseline E0 in log; attempt
   0001 in flight at load-time (needs revision per E1a fix-point rule).
+- 2026-05-17 — **superseded.** See top-of-file banner and
+  `02-synthesis-plan-v2.md` (on PR #9 / `phase-0/bank-pivot`). The
+  "in flight" status above stayed deliberately frozen as the original
+  pre-listen claim; the actual outcome is recorded in
+  `02-synthesis-log.md` entry 0001 (committed at `94d1662` after
+  Surface A listen, Surface B superseded by the v2 pivot).
