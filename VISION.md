@@ -49,9 +49,16 @@ A *stretch* success is that the output is genuinely funny to listen to.
 - **Spike before scaffold.** Two unknowns (separation quality on sports audio, and
   whether onset-aligned animalese sounds right) determine the architecture. Resolve them
   in throwaway scripts before committing to module shapes.
-- **Onset/pitch path first.** Default plan is to skip transcription and drive animalese
-  from VAD + onset detection + pitch tracking on the isolated voice stem. Fall back to a
-  transcription/forced-alignment path only if the spike proves onset detection too noisy.
+- **Transcription-driven path.** Originally written as "Onset/pitch path first,
+  transcription as fallback." Revised 2026-05-16 after Spike B: in practice the
+  synthesis spike produced its audible-quality result via ASR (`--asr-input` mode
+  on `faster-whisper large-v3-turbo`), driving animalese letter selection from
+  transcribed words rather than from VAD + onset detection. The empirical reason
+  the onset path was abandoned: transcribed words give per-letter sample
+  selection (so the synth "spells out" the speech the same way Animal Crossing
+  dialogue boxes do), which the onset path could not provide. See
+  `docs/architecture.md` "Decisions deferred" for the recorded decision and
+  `spikes/02-synthesis-plan-v2.md` for the empirical context.
 - **Modules behind contracts.** Each pipeline stage is a module with a documented
   function signature. Stages do not know about each other's internals. See
   `docs/architecture.md`.
