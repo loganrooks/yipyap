@@ -6,8 +6,10 @@ it, only the slicer that regenerates the bank from source.
 
 The source WAV is 3.9s of PCM_U8 mono at 44.1 kHz: 26 letters laid out
 back-to-back, each 0.15s (6615 samples). This script downloads that file,
-slices it into 26 chunks, subtracts per-letter DC offset (so the cut
-starts at zero), peak-normalizes each chunk to 0.95, applies short
+slices it into 26 chunks, subtracts the per-chunk mean to zero-center
+each chunk (so the chunk's signal has no DC bias — this is not the
+same as forcing the first sample to be zero; that job belongs to the
+edge fades), peak-normalizes each chunk to 0.95, applies short
 linear fades at the edges so per-letter cuts don't click, and writes
 ``{a..z}.wav`` (PCM_16, mono, 44.1 kHz, 0.15s) into the target directory.
 

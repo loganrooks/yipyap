@@ -57,7 +57,7 @@ the listen verdict is recorded.
 | DC offset          | `np.mean(s)`                                          |
 | Peak               | `np.max(np.abs(s))`                                   |
 | RMS                | `sqrt(np.mean(s**2))`                                 |
-| HF ratio           | `sum(|FFT|[f>5kHz]) / sum(|FFT|)`                     |
+| HF ratio           | `sum(\|FFT\|[f>5kHz]) / sum(\|FFT\|)`                 |
 | Spectral flatness  | `geomean(spec) / arithmean(spec)` (0=tonal, 1=noisy)  |
 
 Spectral flatness is new (added in E2) — distinguishes tonal hash

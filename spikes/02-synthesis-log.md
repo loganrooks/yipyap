@@ -67,10 +67,14 @@ Listen verdict (0.75×): TODO.
 ### 0001 — DC-remove per letter at extract-time (plan E1a)
 
 - **Date:** 2026-05-16
-- **Status:** tried (awaiting listen verdict)
-- **Branch / commit:** `phase-0/static-log-scaffold`, uncommitted on
-  top of `4362754` (the plan commit). Implementation is in the
-  working tree only — won't be committed until the listen.
+- **Status:** kept (correctness fix; Surface A verdict landed null
+  on `f`; Surface B verdict superseded by the v2 pivot — see
+  Decision below and findings 2026-05-16 (b)). Metadata reconciled
+  2026-05-17 to drop the original "awaiting" framing; the entry
+  itself was written pre-listen so the prediction text stays as-is
+  (append-only discipline applies to predictions, not metadata).
+- **Branch / commit:** Implemented on `phase-0/static-log-scaffold`
+  atop the plan commit `4362754`; landed as `94d1662`.
 - **Hypothesis:** Letters with measurable DC offset (`f` −0.143,
   `s` −0.066, `x` −0.051, `z` −0.048, `t` −0.046, `v` −0.041) place
   a non-zero start sample at each onset. The 5 ms linear fades at
@@ -118,11 +122,12 @@ Listen verdict (0.75×): TODO.
   worst-DC letters not yet listened to individually; predicted
   to be the same (the mid-letter noise dominates on all
   fricatives).
-- **Listen verdict (Surface B, 1.0× / 0.75×):** TODO. This is the
-  surface where E1a's claim *could* still pay off — concatenated
-  output with many problem letters firing in ASR mode could
-  surface boundary-click reduction that's invisible on Surface A.
-  Worth running before fully closing the experiment.
+- **Listen verdict (Surface B, 1.0× / 0.75×):** not run.
+  Superseded by the v2 pivot (see findings 2026-05-16 (c)).
+  Original promise of "concatenated output could surface
+  boundary-click reduction" stays here as historical record; the
+  question stopped being load-bearing once cross-bank comparison
+  showed bank source dominates the perceptual floor.
 - **Decision:** **Keep (correctness).** Even without a perceptual
   win on Surface A, the change is a free correctness improvement
   — exact peak = 0.95 for every letter, no clipping on z, clean
