@@ -6,7 +6,10 @@ it, only the slicer that regenerates the bank from source.
 
 The source WAV is 3.9s of PCM_U8 mono at 44.1 kHz: 26 letters laid out
 back-to-back, each 0.15s (6615 samples). This script downloads that file,
-slices it into 26 chunks, peak-normalizes each chunk to 0.95, applies short
+slices it into 26 chunks, subtracts the per-chunk mean to zero-center
+each chunk (so the chunk's signal has no DC bias — this is not the
+same as forcing the first sample to be zero; that job belongs to the
+edge fades), peak-normalizes each chunk to 0.95, applies short
 linear fades at the edges so per-letter cuts don't click, and writes
 ``{a..z}.wav`` (PCM_16, mono, 44.1 kHz, 0.15s) into the target directory.
 
@@ -67,6 +70,7 @@ def slice_letters(source_wav: Path, out_dir: Path) -> list[Path]:
     for i in range(N_LETTERS):
         start = i * samples_per_letter
         chunk = audio[start : start + samples_per_letter].copy()
+        chunk = (chunk - float(np.mean(chunk))).astype(np.float32)
         peak = float(np.max(np.abs(chunk)))
         if peak > 0:
             chunk = (chunk / peak * PEAK_NORM).astype(np.float32)
@@ -81,6 +85,31 @@ def slice_letters(source_wav: Path, out_dir: Path) -> list[Path]:
         f"({samples_per_letter} samples/letter @ {sr} Hz)"
     )
     return out_paths
+
+
+def _print_bank_stats(out_paths: list[Path]) -> None:
+    """Markdown table of per-letter peak/RMS/HF/DC stats.
+
+    Copy-pasteable into ``spikes/02-synthesis-log.md`` so the baseline
+    table regenerates whenever the bank does.
+    """
+    print()
+    print("[extract-bank] per-letter stats:")
+    print()
+    print("| letter | peak  | RMS   | HF>5kHz | DC offset |")
+    print("|--------|------:|------:|--------:|----------:|")
+    for p in out_paths:
+        audio, sr = sf.read(str(p), dtype="float32")
+        spec = np.abs(np.fft.rfft(audio))
+        freqs = np.fft.rfftfreq(audio.size, 1 / sr)
+        hf = float(spec[freqs > 5000].sum() / (spec.sum() + 1e-12))
+        peak = float(np.max(np.abs(audio)))
+        rms = float(np.sqrt(np.mean(audio**2)))
+        dc = float(np.mean(audio))
+        print(
+            f"| {p.stem:<6} | {peak:.3f} | {rms:.3f} "
+            f"| {hf:.3f}   | {dc:+.4f}   |"
+        )
 
 
 def main(argv: list[str]) -> int:
@@ -120,7 +149,8 @@ def main(argv: list[str]) -> int:
         download_source(source)
         downloaded = True
 
-    slice_letters(source, args.out)
+    out_paths = slice_letters(source, args.out)
+    _print_bank_stats(out_paths)
 
     if downloaded and not args.keep_source:
         source.unlink(missing_ok=True)
